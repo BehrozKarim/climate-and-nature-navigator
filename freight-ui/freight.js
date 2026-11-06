@@ -1,11 +1,10 @@
 import sample from './sample.js';
 
-export const purchase = '4500006364';
-export const seaId = 'SH0007925';
-export const roadId = 'SH0007924';
 export const dieselId = 'EF-TKM-TRUCK';
 export const renewableId = 'EF-TKM-TRUCK-HVO';
 export const factors = sample.factors;
+export const issues = sample.issues;
+export const version = sample.version;
 export const modes = {
   Truck: ['truck', 'truck-reefer'],
   Ship: ['ship-bulk', 'ship-reefer'],
@@ -25,17 +24,15 @@ const legs = sample.legs.map(([id, ref, mode, factor, mass, distance, activity])
 }));
 
 export const findLeg = (id) => legs.find((leg) => leg.id === id);
-export const seaLeg = findLeg(seaId);
-export const roadLeg = findLeg(roadId);
+export const issueId = (issue) => issue.key + '/' + issue.type;
+export const estimateKg = (issue, km = issue.km) => issue.mass * km * factors[issue.factor].rate;
 
-export function freight(dataset, restored) {
-  const missing = dataset === 'rehearsal' && !restored;
-  const received = missing ? legs.filter((leg) => leg.id !== seaId) : legs;
+export function freight(decisions = {}) {
   const occurrences = new Map();
-  for (const leg of received) occurrences.set(leg.id, (occurrences.get(leg.id) ?? 0) + 1);
+  for (const leg of legs) occurrences.set(leg.id, (occurrences.get(leg.id) ?? 0) + 1);
   const held = [];
   const included = [];
-  for (const leg of received) {
+  for (const leg of legs) {
     const duplicate = occurrences.get(leg.id) > 1;
     const validNumbers = [leg.mass, leg.distance, leg.activity, leg.kg]
       .every((value) => Number.isFinite(value) && value > 0);
@@ -48,9 +45,21 @@ export function freight(dataset, restored) {
       included.push(leg);
     }
   }
+  const recordedKg = included.reduce((sum, leg) => sum + leg.kg, 0);
+  const adjustments = issues.filter((issue) => issue.factor && decisions[issueId(issue)]?.kind === 'approve')
+    .map((issue) => {
+      const { km, basis, source } = decisions[issueId(issue)];
+      const mode = Object.keys(expectedFactors).find((mode) => expectedFactors[mode] === issue.factor);
+      return {
+        id: issue.key, ref: issue.record, mode, factor: issue.factor, mass: issue.mass,
+        distance: km, activity: issue.mass * km, kg: estimateKg(issue, km), basis, source,
+        group: Object.keys(modes).find((key) => modes[key].includes(mode)),
+      };
+    });
+  const adjusted = [...included, ...adjustments];
   const totals = Object.fromEntries(Object.keys(modes).map((key) => [key,
-    included.filter((leg) => leg.group === key).reduce((sum, leg) => sum + leg.kg, 0)]));
-  return { missing, held, included, totals, kg: Object.values(totals).reduce((a, b) => a + b, 0) };
+    adjusted.filter((leg) => leg.group === key).reduce((sum, leg) => sum + leg.kg, 0)]));
+  return { held, included, adjustments, adjusted, totals, recordedKg, kg: Object.values(totals).reduce((a, b) => a + b, 0) };
 }
 
 export function fuelComparison(included) {
@@ -58,6 +67,7 @@ export function fuelComparison(included) {
   const activity = eligible.reduce((sum, leg) => sum + leg.activity, 0);
   return {
     count: eligible.length,
+    activity,
     diesel: activity * factors[dieselId].rate,
     renewable: activity * factors[renewableId].rate,
   };
