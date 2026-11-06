@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="Apetit climate workspace concept for reviewing source records, keeping an evidence trail and comparing reduction options.">
+    <title>Climate workspace · Apetit</title>
+    <link rel="icon" href="./mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="topbar">
+      <a class="brand" href="#overview">
+        <img src="./mark.svg" width="36" height="36" alt="">
+        <span><strong>Apetit</strong><small>Climate &amp; Nature Navigator</small></span>
+      </a>
+      <nav id="navigation" aria-label="Main navigation"></nav>
+      <span class="demo-label"><i></i> Demo workspace</span>
+    </header>
+    <div class="workspace">
+      <main id="main" tabindex="-1">
+        <section class="card blank" id="local-launch" hidden>
+          <h1>Open the Apetit prototype</h1>
+          <p>This source page needs Vite to load the app. The standalone file opens directly in your browser.</p>
+          <a class="button primary" href="./Apetit-Freight-Prototype.html">Open the standalone prototype</a>
+          <p>For development, run <code>npm run dev</code> and open the local address it prints.</p>
+        </section>
+      </main>
+      <footer class="site-footer"><span>Apetit <i></i> Climate &amp; Nature Navigator</span><span>Fictional data · Changes stay in this browser</span></footer>
+    </div>
+    <dialog id="drawer" aria-labelledby="drawer-title"></dialog>
+    <div id="announcement" class="sr-only" role="status"></div>
+    <script type="module" src="./app.js"></script>
+    <script>
+      const entry = document.querySelector('script[type="module"][src]');
+      if (location.protocol === 'file:' && entry) {
+        const launch = document.getElementById('local-launch');
+        if (entry.getAttribute('src').startsWith('./assets/')) {
+          launch.querySelector('a').setAttribute('href', '../Apetit-Freight-Prototype.html');
+        }
+        launch.hidden = false;
+      }
+    </script>
+  </body>
+</html>
