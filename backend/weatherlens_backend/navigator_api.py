@@ -2,13 +2,13 @@ from typing import Annotated
 from fastapi import APIRouter, Header, Query
 from fastapi.responses import JSONResponse
 from . import schemas as S
-from .freight import calculate_freight, purchase_coverage
 from .navigator_climate import ClimateRiskService
 from .navigator_common import model
 from .navigator_context import NavigatorContext
 from .navigator_nature import NatureSensitivityService
 from .navigator_overview import overview
 from .navigator_pathways import PathwayService
+from .navigator_presentation import geography, freight_preview, calculation_version
 from .navigator_routes import RouteService
 from .navigator_workflows import ConversationService, ReviewService, page_bounds
 
@@ -39,6 +39,15 @@ def create_navigator_router(settings, store):
     @router.get('/models/{section}')
     def parameters(section: str):
         return model(section)
+
+    @router.get('/datasets/{dataset_id}/geography')
+    def map_context(dataset_id: str, year: int = 2025, include_parcels: bool = False):
+        return geography(store(), dataset_id, year, include_parcels)
+
+    @router.get('/datasets/{dataset_id}/cache-context')
+    def cache_context(dataset_id: str):
+        store().dataset(dataset_id)
+        return {'dataset_id': dataset_id, 'model_hash': calculation_version()}
 
     @router.post('/prepare')
     def prepare(body: S.DatasetInput):
@@ -82,10 +91,12 @@ def create_navigator_router(settings, store):
     @router.post('/freight/batch', status_code=201)
     def freight_batch(body: S.FreightInput):
         inputs = body.model_dump(exclude={'dataset_id'})
-        st = store()
-        output = calculate_freight(st.rows(body.dataset_id, 'shipments'), st.rows(body.dataset_id, 'factors'), **inputs)
-        output['purchase_coverage'] = purchase_coverage(st.rows(body.dataset_id, 'purchases', year=body.year), output['lines'], st.rows(body.dataset_id, 'materials'), body.year) if body.direction != 'outbound' else None
+        output = freight_preview(store(), body.dataset_id, **inputs)
         return save(body.dataset_id, 'freight', inputs, output)
+
+    @router.post('/freight/batch/preview')
+    def batch_preview(body: S.FreightInput):
+        return preview(freight_preview(store(), body.dataset_id, **body.model_dump(exclude={'dataset_id'})))
 
     @router.post('/pathways/runs', status_code=201)
     def pathways(body: S.NavigatorPathway):

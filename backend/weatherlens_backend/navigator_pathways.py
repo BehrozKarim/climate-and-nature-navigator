@@ -9,7 +9,7 @@ class PathwayService:
         self.context = NavigatorContext(store, dataset_id)
         self.model = model('pathway')
 
-    def calculate(self, physical_scenario='ssp245', year=2040, action_ids=None, selection_mode='manual', transition_scenario=None):
+    def calculate(self, physical_scenario='ssp245', year=2040, action_ids=None, selection_mode='manual', transition_scenario=None, start_years=None):
         p = self.model['parameters']
         if selection_mode not in ('manual', 'all', 'cheapest') or not isinstance(year, int) or isinstance(year, bool) or not p['assumed_base_year'] <= year <= p['end_year']:
             raise ValueError('Choose manual/all/cheapest and a pathway year in 2025–2050')
@@ -23,6 +23,10 @@ class PathwayService:
         s3 = source['scopes']['scope3']
         catalogue = Analytics(self.store, self.ds).actions()
         actions = {a['lever_id']: a for a in catalogue['actions']}
+        start_years = start_years or {}
+        for action_id, start in start_years.items():
+            if action_id not in actions or isinstance(start, bool) or not isinstance(start, int) or actions[action_id]['earliest_start'] is None or not actions[action_id]['earliest_start'] <= start <= p['end_year']:
+                raise ValueError('Action starts must be known catalogue actions, no earlier than their supplied earliest start, and at most 2050')
         invalid = {}
         for a in actions.values():
             missing = [k for k in ('abatement_tco2e_2030_design', 'capex_eur', 'opex_delta_eur_per_yr', 'earliest_start', 'ramp_years') if a[k] is None]
@@ -38,7 +42,7 @@ class PathwayService:
         def physical(a):
             return a['lever_id'] not in invalid and a['lever_type'] not in ('data', 'structural') and a['scope'] not in ('measurement', 'structural') and a['abatement_tco2e_2030_design'] > 0
         def ramp(a, y):
-            return max(0, min(1, (y - a['earliest_start'] + 1) / a['ramp_years']))
+            return max(0, min(1, (y - start_years.get(a['lever_id'], a['earliest_start']) + 1) / a['ramp_years']))
         def target(y):
             elapsed = y - p['assumed_base_year']
             near = s12 * max(p['long_term_fraction'], 1 - p['scope12_linear_rate'] * elapsed)
@@ -90,11 +94,12 @@ class PathwayService:
         series = []
         for y in range(p['assumed_base_year'], p['end_year'] + 1):
             row = effects(selected, y)
+            row['annual_opex_delta_eur'] = sum(actions[i]['opex_delta_eur_per_yr'] * ramp(actions[i], y) for i in selected)
             row.update(year=y, target_tco2e=target(y), gap_tco2e=row['emissions_tco2e'] - target(y))
             series.append(row)
         current = next(r for r in series if r['year'] == year)
         at2030 = next(r for r in series if r['year'] == 2030)
         scenario = self.context.scenario(physical_scenario, year, transition_scenario)
         price = scenario['values']['carbon_price_eur_t']
-        macc = sorted([a | {'selected': a['lever_id'] in selected, 'selectable': a['lever_id'] not in invalid, 'missing_fields': invalid.get(a['lever_id'], []), 'physical_abatement': physical(a)} for a in actions.values()], key=lambda a: (a['indicative_cost_eur_per_tco2e'] is None, a['indicative_cost_eur_per_tco2e'] or 0, a['lever_id']))
+        macc = sorted([a | {'selected': a['lever_id'] in selected, 'selectable': a['lever_id'] not in invalid, 'missing_fields': invalid.get(a['lever_id'], []), 'physical_abatement': physical(a), 'planned_start': start_years.get(a['lever_id'], a['earliest_start'])} for a in actions.values()], key=lambda a: (a['indicative_cost_eur_per_tco2e'] is None, a['indicative_cost_eur_per_tco2e'] or 0, a['lever_id']))
         return {'dataset_id': self.ds, 'method_version': 'navigator-illustrative-pathway-v2', 'status': 'partial_coverage' if invalid else 'illustrative_model_requires_review', 'baseline': {'inventory_year': source['year'], 'assumed_base_year': p['assumed_base_year'], 'scope1_tco2e': s1, 'scope2_market_tco2e': s2, 'scope12_tco2e': s12, 'scope3_tco2e': s3, 'total_tco2e': s12 + s3, 'source': source['source']}, 'selection': {'action_ids': selected, 'excluded_action_ids': sorted(invalid), 'mode': selection_mode, 'algorithm': 'greedy_adjusted_marginal_2030_abatement' if selection_mode == 'cheapest' else 'explicit_selection', 'minimum_2030_reduction_tco2e': minimum, 'minimum_reached': at2030['adjusted_abatement_tco2e'] >= minimum, 'shortfall_2030_tco2e': max(0, minimum - at2030['adjusted_abatement_tco2e'])}, 'series': series, 'selected_year': current, 'macc': macc, 'costs': {'upfront_capex_eur': sum(actions[i]['capex_eur'] for i in selected), 'annual_opex_delta_eur': sum(actions[i]['opex_delta_eur_per_yr'] * ramp(actions[i], year) for i in selected), 'hypothetical_avoided_carbon_cost_eur': current['adjusted_abatement_tco2e'] * price if price is not None else None, 'cost_basis': 'Catalogue values; selected opex scales with implementation ramp, capex is planned upfront budget'}, 'scenario': scenario, 'model': self.model, 'target_compliance_validated': False, 'issues': catalogue['issues'], 'limitations': ['Published 2024 proxy and assumed 2025 base require structural and expert review.', 'Illustrative target rates are source-package assumptions, not a verified SBTi/FLAG compliance assessment.', 'Fixed activity and flat abatement after ramp; no BAU, decay or supplier feasibility model.', 'Known overlaps use conservative maxima; other interactions remain unassessed.', 'Scope 1 and Scope 2 actions have separate emissions floors; cross-scope transfers need a dedicated model.', 'Incomplete actions are unavailable; all/greedy/default selections disclose their exclusion.', 'MACC retains catalogue design values, distinct from adjusted annual portfolio effects.', 'Carbon-price exposure is hypothetical, not guaranteed cash savings or carbon credit revenue.']}

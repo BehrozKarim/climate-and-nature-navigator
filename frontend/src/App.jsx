@@ -4,20 +4,18 @@ import { installNavigation, syncDialogFocus } from './lib/interactions.js';
 import { ConnectedInventory, ConnectedReview } from './lib/connected-screens.jsx';
 import VoiceChat from './lib/VoiceChat.jsx';
 import Overview from './screens/Overview.jsx';
-import Inventory from './screens/Inventory.jsx';
 import Freight from './screens/Freight.jsx';
 import Pathways from './screens/Pathways.jsx';
 import Climate from './screens/Climate.jsx';
 import Nature from './screens/Nature.jsx';
-import Review from './screens/Review.jsx';
 
-const InventoryScreen = backendMode ? ConnectedInventory : Inventory;
-const ReviewScreen = backendMode ? ConnectedReview : Review;
+const InventoryScreen = ConnectedInventory;
+const ReviewScreen = ConnectedReview;
 
 const SCN = {
-  ssp126: { ssp: 'SSP1-2.6', label: 'Low', t: '+1.7°', tc: '#0D6A3C' },
-  ssp245: { ssp: 'SSP2-4.5', label: 'Medium', t: '+2.2°', tc: '#6B4A00' },
-  ssp585: { ssp: 'SSP5-8.5', label: 'High', t: '+3.0°', tc: '#A43A14' }
+  ssp126: { ssp: 'SSP1-2.6', label: 'Low', t: '2.6', tc: '#0D6A3C' },
+  ssp245: { ssp: 'SSP2-4.5', label: 'Medium', t: '4.5', tc: '#6B4A00' },
+  ssp585: { ssp: 'SSP5-8.5', label: 'High', t: '8.5', tc: '#A43A14' }
 };
 const ICONS = {
   compass: ['M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18Z', 'M15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5Z', ''],
@@ -32,36 +30,6 @@ const SCREENS = [
   { id: 'overview', label: 'Overview', icon: 'compass' }, { id: 'inventory', label: 'Emissions', icon: 'layers' }, { id: 'freight', label: 'Freight', icon: 'truck' },
   { id: 'pathways', label: 'Pathways', icon: 'trend' }, { id: 'climate', label: 'Climate risk', icon: 'thermo' }, { id: 'nature', label: 'Nature', icon: 'leaf' }, { id: 'review', label: 'Review', icon: 'shield' }
 ];
-const T = {
-  inv2024: { title: 'Emissions 2024', value: '244 724', unit: 'tCO₂e', status: 'approved', steps: [
-    { k: 'Source', t: 'published_inventory_history.csv', id: 'year = 2024', d: 'Scope 1: 6 251 · Scope 2: 63 · Scope 3: 238 410' },
-    { k: 'Calculation', t: 'Scope 1 + 2 + 3', id: '= 244 724 tCO₂e', d: 'Market-based Scope 2.' } ] },
-  sbti: { title: 'Science-based target', value: '−31 100', unit: 'tCO₂e needed by 2030', status: 'review', steps: [
-    { k: 'Source', t: 'framework_digest.md · SBTi', id: 'Scope 1+2: −4.2 %/yr · Scope 3: −2.5 %/yr', d: 'Net zero: at least −90 % by 2050.' },
-    { k: 'Calculation', t: '6 314 × 21 % + 238 410 × 12.5 %', id: '= 31 127 tCO₂e', d: 'Base: 2024 until the 2025 base year is approved.' } ] },
-  levers: { title: 'Cheapest actions to 2030', value: '27 800', unit: 'tCO₂e', status: 'draft', steps: [
-    { k: 'Source', t: 'decarbonisation_levers.csv', id: 'L21 · L22 · L11 · L16 · L13', d: 'Design estimates; recompute from the inventory before approval.' } ] },
-  clim: { title: 'Yield model', value: '5 crops', unit: 'trained on 2012–2026', status: 'review', steps: [
-    { k: 'Source', t: 'farm_survey_fi.csv · foodhills_odlingsdata_se.csv', id: 'yields 2012–2026', d: 'Median-filtered per year to remove unit errors.' },
-    { k: 'Source', t: 'weather_monthly_1991_2060.csv', id: '84 grid cells · 3 scenarios', d: 'Hot days June–August and June–July water balance.' } ] },
-  draft: { title: '2025 draft, Scope 3', value: '71 534 593', unit: 'tCO₂e as drafted', status: 'blocked', note: '300× the 2024 value. Likely a unit error.', steps: [
-    { k: 'Source', t: 'draft_report_summary_2025.csv', id: 'report:2025:scope3', d: 'Preliminary' },
-    { k: 'Check', t: 'Compared with 2024', id: '238 410 t', d: 'Issue type: unit_error' } ] },
-  bjuv: { title: 'Bjuv acquisition', value: '27 Nov 2025', unit: '', status: 'review', steps: [
-    { k: 'Source', t: 'structural_events.csv', id: 'acquisition', d: '~300 Swedish pea growers join Scope 3. Base year must be recalculated.' } ] },
-  ship2025: { title: 'Freight 2025', value: '9 437', unit: 'tCO₂e · 2 339 legs', status: 'review', steps: [
-    { k: 'Source', t: 'shipments.csv', id: 'year = 2025', d: 'Mode, tonnes, km per leg.' },
-    { k: 'Factor', t: 'emission_factor_library.csv', id: 'EF-TKM-* · v2025', d: 'Truck 0.092 · reefer 0.118 · Ro-Pax 0.060 · bulk 0.013 kg/tkm' } ] },
-  F0001: { title: 'Farm F0001', value: 'Pea', unit: 'south-west Finland', status: 'approved', steps: [
-    { k: 'Source', t: 'farm_registry.csv', id: 'farm:F0001', d: '61.009 N, 22.536 E · since 1997' } ] },
-  SUP004: { title: 'Supplier SUP004', value: 'Rapeseed', unit: 'Estonia', status: 'review', steps: [
-    { k: 'Source', t: 'suppliers.csv', id: 'supplier:SUP004', d: 'No product footprint · SBTi: none' } ] },
-  L20: { title: 'HVO100 trucking (L20)', value: '3 139', unit: 'tCO₂e a year', status: 'review', steps: [
-    { k: 'Source', t: 'decarbonisation_levers.csv', id: 'L20 · design 3 200 t', d: '+€650 000 a year' },
-    { k: 'Calculation', t: '43.6 M tkm × (0.092 − 0.020)', id: '= 3 139 t', d: 'From 2025 shipments.' } ] },
-  CA18: { title: 'Catchment CA18', value: 'Bad', unit: 'lake status', status: 'approved', steps: [
-    { k: 'Source', t: 'catchments.csv', id: 'CA18', d: '225.5 km² · 6 390 ha fields' } ] }
-};
 const Q = [
   { q: 'Which actions close the 2030 gap cheapest?' }, { q: 'How does high warming hit our peas?' }, { q: 'Why is the 2025 draft blocked?' }, { q: 'Where do freight emissions come from?' }
 ];
@@ -70,7 +38,7 @@ export default class Main extends React.Component {
   constructor(...a) {
     super(...a);
     const p = this.props || {};
-    this.state = { screen: p.startScreen || 'overview', pinned: !!p.railPinned, scenario: 'ssp245', year: 2040, sflip: 0, palette: false, q: '', act: 0, ask: false, askInput: '', thread: [], trace: null, trStatus: 'review', toast: '', inbox: 4 };
+    this.state = { screen: p.startScreen || 'overview', pinned: !!p.railPinned, scenario: 'ssp245', year: 2040, sflip: 0, palette: false, q: '', act: 0, ask: false, askInput: '', thread: [], trace: null, trStatus: 'review', toast: '', inbox: 0 };
     this.navTo = (id) => { if (!SCREENS.some(s => s.id === id)) return; history.pushState(null, '', '#' + id); this.setState({ screen: id, sflip: this.state.sflip + 1, palette: false, q: '' }); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {} };
     this.openTrace = (o) => { if (!o) return; this.setState({ trace: o, trStatus: o.status || 'review', palette: false, ask: false }); };
     this.askQ = (q) => this.ask(q);
@@ -127,7 +95,6 @@ export default class Main extends React.Component {
   }
   palGroups() {
     const s = this;
-    const rec = (key, label, sub) => ({ label, sub, tag: 'Record', tagCls: 'p-info', run: () => s.openTrace(T[key]) });
     const G = [
       { g: 'Pages', items: SCREENS.map((x) => ({ label: x.label, sub: '', tag: 'Page', tagCls: 'p-draft', run: () => s.navTo(x.id) })) },
       { g: 'Actions', items: [
@@ -136,7 +103,7 @@ export default class Main extends React.Component {
         { label: 'Low warming', sub: 'Set warming level', tag: 'Do', tagCls: 'p-ok', run: () => { s.setState({ scenario: 'ssp126', palette: false }); s.toast('Warming set to low'); } },
         { label: Q[0].q, sub: 'Ask', tag: 'Ask', tagCls: 'p-rev', run: () => s.ask(Q[0].q) }
       ] },
-      { g: 'Records', items: backendMode ? (this.state.searchResults || []).map(r => ({ label:r.record_id, sub:r.table, tag:'Record', tagCls:'p-info', run:() => this.openTrace(sourceTrace(r)) })) : [rec('F0001', 'F0001', 'Farm · pea · Finland'), rec('SUP004', 'SUP004', 'Supplier · rapeseed · Estonia'), rec('L20', 'L20 · HVO100 trucking', 'Action'), rec('CA18', 'CA18', 'Catchment · lake'), rec('draft', '2025 draft', 'Blocked'), rec('bjuv', 'Bjuv acquisition', 'Event')] }
+      { g: 'Records', items: (this.state.searchResults || []).map(r => ({ label:r.record_id, sub:r.table, tag:'Record', tagCls:'p-info', run:() => this.openTrace(sourceTrace(r)) })) }
     ];
     const q = (this.state.q || '').trim().toLowerCase();
     let out = G.map((g) => ({ g: g.g, items: q ? g.items.filter((it) => (it.label + ' ' + it.sub + ' ' + it.tag).toLowerCase().indexOf(q) > -1) : g.items })).filter((g) => g.items.length);
@@ -148,7 +115,7 @@ export default class Main extends React.Component {
     const st = this.state; const idx = Math.max(0, SCREENS.findIndex((x) => x.id === st.screen)); const cur = SCREENS[idx];
     const nav = SCREENS.map((x, i) => ({ label: x.label, d1: ICONS[x.icon][0], d2: ICONS[x.icon][1], d3: ICONS[x.icon][2], cur: i === idx ? 'page' : 'false', color: i === idx ? '#3CCB7F' : '#C9D8E2', badge: x.id === 'review' && st.inbox > 0, badgeN: String(st.inbox), go: () => this.navTo(x.id) }));
     const pal = st.palette ? this.palGroups() : [];
-    const thread = st.thread.map((m, i) => { const done = m.role === 'ai' && m.shown >= m.text.length; return { user: m.role === 'user', ai: m.role === 'ai', text: m.text, display: m.role === 'ai' ? m.text.slice(0, m.shown) : m.text, caret: m.role === 'ai' && !done ? 'caret' : '', done, cites: (m.cites || []).map((c) => ({ label: c[0], open: () => this.openTrace(typeof c[1] === 'object' ? c[1] : T[c[1]]) })) }; });
+    const thread = st.thread.map((m, i) => { const done = m.role === 'ai' && m.shown >= m.text.length; return { user: m.role === 'user', ai: m.role === 'ai', text: m.text, display: m.role === 'ai' ? m.text.slice(0, m.shown) : m.text, caret: m.role === 'ai' && !done ? 'caret' : '', done, cites: (m.cites || []).map((c) => ({ label: c[0], open: () => this.openTrace(typeof c[1] === 'object' ? c[1] : null) })) }; });
     const asked = st.thread.filter((m) => m.role === 'user').map((m) => m.text);
     const suggest = Q.map((x) => ({ q: x.q, go: () => this.ask(x.q) })); const suggestRest = suggest.filter((x) => asked.indexOf(x.q) < 0); const lastAi = st.thread[st.thread.length - 1];
     const tr = st.trace || { title: '', value: '', unit: '', steps: [] };
@@ -164,7 +131,7 @@ export default class Main extends React.Component {
       q: st.q, pal, palEmpty: st.palette && pal.length === 0, onQ: (e) => this.setState({ q: e.target.value, act: 0 }),
       palKey: (e) => { const n = (this._flat || []).length; if (e.key === 'Escape') { e.preventDefault(); this.setState({ palette: false }); } else if (e.key === 'ArrowDown') { e.preventDefault(); this.setState({ act: n ? (st.act + 1) % n : 0 }); } else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState({ act: n ? (st.act - 1 + n) % n : 0 }); } else if (e.key === 'Enter') { e.preventDefault(); const it = (this._flat || [])[st.act]; if (it) it.run(); } },
       scenario: st.scenario, year: st.year,
-      scns: keys.map((k) => ({ label: SCN[k].label, t: SCN[k].t, tc: SCN[k].tc, tip: SCN[k].ssp + ' · about ' + SCN[k].t + 'C by 2050', on: st.scenario === k ? 'true' : 'false', pick: () => this.setState({ scenario: k }) })),
+      scns: keys.map((k) => ({ label: SCN[k].label, t: SCN[k].t, tc: SCN[k].tc, tip: SCN[k].ssp + ' · supplied climate scenario', on: st.scenario === k ? 'true' : 'false', pick: () => this.setState({ scenario: k }) })),
       scnThumb: 4 + keys.indexOf(st.scenario) * 96,
       years: [2030, 2040, 2050].map((y) => ({ label: String(y), on: st.year === y ? 'true' : 'false', pick: () => this.setState({ year: y }) })), yrThumb: 4 + [2030, 2040, 2050].indexOf(st.year) * 54,
       openAsk: () => this.setState({ ask: true, trace: null, palette: false }), closeAsk: () => this.setState({ ask: false }),
@@ -177,8 +144,8 @@ export default class Main extends React.Component {
       hasTrace: !!st.trace, tr, trCls: trm[0], trLabel: trm[1], trApproved: st.trStatus === 'approved', trHasNote: !!tr.note,
       trSteps: (tr.steps || []).map((s, i) => Object.assign({}, s, { n: String(i + 1), col: stCol[s.k] || '#253642' })),
       closeTrace: () => this.setState({ trace: null }),
-      approve: () => { if (backendMode) { this.toast('Open Review to review a saved item with a note'); return; } if (st.trace?.status === 'blocked') { this.toast('Resolve the blocking source issue before approval'); return; } this.setState({ trStatus: 'approved', inbox: Math.max(0, st.inbox - (st.trStatus === 'approved' ? 0 : 1)) }); this.toast('Approved'); },
-      requestChange: () => { if (backendMode) { this.toast('Open Review to request a change with a note'); return; } this.setState({ trStatus: 'changes' }); this.toast('Change requested'); },
+      approve: () => this.toast('Open Review to review a saved item with a note'),
+      requestChange: () => this.toast('Open Review to request a change with a note'),
       hasToast: !!st.toast, toast: st.toast
     };
   }
@@ -261,7 +228,7 @@ export default class Main extends React.Component {
             {v.showW ? <>
               <div className={"swap-a"} style={{"display": "flex", "alignItems": "center", "gap": "8px"}}>
                 <span style={{"fontSize": "12px", "fontWeight": "600", "color": "var(--muted)"}}>
-                  {"Warming"}
+                  {"Scenario"}
                 </span>
                 <div className={"seg"} role={"group"} aria-label={"Warming level"}>
                   <span className={"seg-thumb"} aria-hidden={"true"} style={{"left": String(v.scnThumb) + "px", "width": "96px"}}>
@@ -316,7 +283,7 @@ export default class Main extends React.Component {
           </header>
           <main className={"content"} style={{"flex": "1", "padding": "22px 28px 64px"}}>
             {backendMode && <p role="status" style={{margin:'0 0 18px',fontSize:12,color:'var(--muted)'}}>
-              Live: emissions, route calculations, search, Ask and reviews. Overview, scenario screens and annual freight comparison: v3 design sample.
+              Supplied synthetic snapshot · cached calculations · sources available in each view.
             </p>}
             <div className={v.scrCls}>
               {v.isOverview ? <>
@@ -404,9 +371,8 @@ export default class Main extends React.Component {
                   {"Ask Navigator"}
                 </h2>
                 <p style={{"margin": "3px 0 0", "fontSize": "13px", "color": "var(--night-muted)"}}>
-                  {backendMode ? 'Answers link to sources and calculations.' : 'Design sample data · chat uses the live backend.'}
+                  {'Answers link to sources and calculations.'}
                 </p>
-                {!backendMode && <a href="/" style={{fontSize:12,color:'var(--night-muted)'}}>Switch to live data</a>}
               </div>
               <button type={"button"} className={"mapbtn"} aria-label={"Close"} onClick={v.closeAsk}>
                 <svg width={"18"} height={"18"} viewBox={"0 0 24 24"} fill={"none"} stroke={"currentColor"} strokeWidth={"2"} strokeLinecap={"round"} aria-hidden={"true"}>

@@ -1,3 +1,4 @@
+import {cacheInfo,setCacheContext} from './result-cache.js';
 /** Browser API client. Credentials, when needed, stay in memory. */
 export class ApiError extends Error {
   constructor(status, detail) {
@@ -8,10 +9,11 @@ export class ApiError extends Error {
 }
 
 export class NavigatorApi {
-  constructor({ base = '/v1', fetcher = (...args) => fetch(...args), token = '' } = {}) {
+  constructor({ base = '/v1', fetcher = (...args) => fetch(...args), token = '',initialDataset='' } = {}) {
     this.base = base.replace(/\/$/, '');
     this.fetcher = fetcher;
     this.token = token;
+    if(initialDataset)this.datasetPromise=Promise.resolve(initialDataset);
   }
 
   async request(path, { body, signal, method = body === undefined ? 'GET' : 'POST' } = {}) {
@@ -37,6 +39,15 @@ export class NavigatorApi {
     }).catch(error => { this.datasetPromise = null; throw error; });
     return this.datasetPromise;
   }
+  async verifySnapshot() {
+    const {datasets}=await this.request('/datasets');
+    const id=datasets?.[0]?.dataset_id;
+    if(!id)throw new Error('No dataset imported. The bundled cache remains visible; import the supplied package to connect.');
+    const context=await this.request(`/navigator/datasets/${encodeURIComponent(id)}/cache-context`);
+    const previous=cacheInfo(),changed=previous.dataset_id!==id||previous.model_hash!==context.model_hash;
+    this.datasetPromise=Promise.resolve(id);setCacheContext(id,context.model_hash);
+    return {...context,changed};
+  }
 
   async calculate(path, inputs = {}, options = {}) {
     return this.request('/navigator/' + path, { ...options, body: { dataset_id: await this.dataset(), ...inputs } });
@@ -44,8 +55,10 @@ export class NavigatorApi {
   async datasetRequest(path, options) {
     return this.request(`/navigator/datasets/${encodeURIComponent(await this.dataset())}/${path}`, options);
   }
-  inventory(year = 2024, restated = false) { return this.calculate('inventory', { year, restated }); }
+  inventory(year = 2024, restated = false, options) { return this.calculate('inventory', { year, restated }, options); }
   preview(screen, inputs, options) { return this.calculate(`${screen}/preview`, inputs, options); }
+  geography({year=2025,includeParcels=false,...options}={}) { return this.datasetRequest(`geography?year=${year}&include_parcels=${includeParcels}`, options); }
+  freightBatch(inputs, options) { return this.calculate('freight/batch/preview', inputs, options); }
   save(screen, inputs) { return this.calculate(`${screen}/runs`, inputs); }
   freightCatalog(options) { return this.datasetRequest('freight/catalog', options); }
   lookup(origin, destination, options) { return this.calculate('freight/lookup', { origin, destination }, options); }
@@ -53,7 +66,8 @@ export class NavigatorApi {
   prepare() { return this.calculate('prepare'); }
   reviews() { return this.datasetRequest('reviews?limit=500'); }
   review(id, input) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/actions`, { body: input }); }
-  reviewExport(id) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/export`); }
+  reviewExport(id, options) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/export`, options); }
+  sourceRow(source, options) { return this.request(`/datasets/${encodeURIComponent(source.dataset_id)}/sources/${encodeURIComponent(source.table)}/${encodeURIComponent(source.row_number)}`, options); }
   receipts(reviewId) { return this.datasetRequest(`reviews/${encodeURIComponent(reviewId)}/receipts`); }
   prepareReceipt(reviewId, expected_version, wallet) { return this.datasetRequest(`reviews/${encodeURIComponent(reviewId)}/receipts`, { body: { expected_version, wallet } }); }
   submitReceipt(id, signed_transaction) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/submit`, { body: { signed_transaction } }); }
@@ -94,11 +108,9 @@ export class NavigatorApi {
   }
 }
 
-export const api = new NavigatorApi();
-export function usesBackend(search = '') {
-  return new URLSearchParams(search).get('mode') !== 'reference';
-}
-export const backendMode = typeof window !== 'undefined' && usesBackend(window.location.search);
+export const api = new NavigatorApi({initialDataset:cacheInfo().dataset_id});
+export function usesBackend() { return true; }
+export const backendMode = true;
 
 /** Backend route coordinates are latitude/longitude; NavMap uses longitude/latitude. */
 export function routeToMap(leg) {

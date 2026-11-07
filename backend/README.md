@@ -2,7 +2,7 @@
 
 Solana Devnet analyst-signing receipts are available through Review. See the [receipt setup, API and demo guide](docs/solana-receipts.md). Install the updated requirements before starting; browser wallets retain all signing keys.
 
-A separately runnable Python/FastAPI backend using the challenge brief and synthetic package as source evidence. The challenge brief is the only required company-context document; the transcript and pain-point summary are not required for the snapshot. The frontend connects to this service with `?mode=backend`.
+A separately runnable Python/FastAPI backend using the challenge brief and synthetic package as source evidence. The challenge brief is the only required company-context document; the transcript and pain-point summary are not required for the snapshot. All frontend screens connect to this service by default; there is no design-data fallback.
 
 The supplied **Navigator app (interactive)** ZIP now defines the feature contract: seven screens plus search, evidence, review and assistant threads. The [frontend API contract](docs/navigator-api-contract.md) maps every screen/control to requests and response fields. Use calculation previews for live controls and saved runs for evidence/review.
 
@@ -30,8 +30,8 @@ The verification run has already populated the local database with the supplied 
 | Manual freight emissions | Tonnes × recorded km × mode-specific factor, grouped into Scope 3 categories 4/9 | Recorded distances only; endpoints and route geometry are absent |
 | Trustworthy calculations | Factor/version references, correction and exclusion issues, duplicate quarantine, persistent calculation runs | Arithmetic validation does not establish the accuracy or completeness of the synthetic input |
 | Compare future actions | All 30 actions, ramped annual pathways, conservative overlap adjustment, MACC, costs and a greedy selection shortcut | Illustrative catalogue effects/target proxy; no validated local business case or certified SBTi/FLAG compliance |
-| Climate/farming exposure | Complete monthly-season SSP comparison, actual cell coordinates, playback timeline and crop/replacement-premium sensitivity | Crop coefficients are illustrative prototype assumptions, not trained or validated forecasts |
-| Nature/geospatial context | Contract-area/catchment joins, ecological state, mitigation sliders, estimated pressure/state ranking and origin context | Coefficients are uncalibrated; company attribution and SBTN priorities remain unvalidated |
+| Climate/farming exposure | Complete monthly-season SSP comparison, source cell coordinates, exposure timeline and historical price context | Yield/replacement-loss forecasts remain unavailable until a supported crop model is fitted |
+| Nature/geospatial context | Contract-area/catchment joins, ecological state, monitored records and import-origin context | No unsupported nutrient attribution, mitigation benefit or SBTN priority is generated |
 | Explain results | Snapshotted document retrieval with excerpts/citations; optional model explanation | Default output is explicitly **extractive, not AI-generated** |
 | Review and reproduce decisions | Independent drafts, revisions, optimistic version checks, review records, audit history and JSON briefs | Reviews use declared identities and are marked prototype-only; investment approval is blocked |
 
@@ -63,7 +63,7 @@ The existing explanation adapter can use Google's [OpenAI-compatible Gemini endp
 - `WEATHERLENS_LLM_API_KEY`: your Gemini API key, kept locally on the server
 - `WEATHERLENS_LLM_MODEL`: a compatible Gemini model ID available to your key
 
-The normal backend entry point and local test command automatically load `backend/.env`. The frontend's Ask panel always uses this backend, even when `?mode=reference` selects sample screen data. If a terminal contains older LLM variables, those override `.env`; launch from a fresh terminal to use the file's values.
+The normal backend entry point and local test command automatically load `backend/.env`. The frontend's Ask panel always uses this backend, including links with the legacy `?mode=reference` parameter. If a terminal contains older LLM variables, those override `.env`; launch from a fresh terminal to use the file's values.
 
 Retrieval currently ranks real document excerpts using lexical matching. It is not embedding/vector retrieval. With a provider configured, the selected excerpts and optional saved-run context go to the model, which must return supported citation IDs. Without a provider, or on invalid output, it returns excerpts with an explicit extractive label. Citation-ID validation does not prove the factual correctness of every generated sentence.
 
@@ -201,7 +201,7 @@ The local ZIP resolved the earlier Claude-link access problem. Its screens and c
 
 ## Separation and future deployment
 
-This directory owns the API, database and tests. `../weatherlens` continues to own the existing UI and hosted site. No frontend or hosted deployment was changed, and no server remains running from verification. Frontend integration can use the REST contract and configured CORS origins.
+This directory owns the API and database; `../frontend` owns the seven-screen interface. All screens use backend calculations and snapshot source evidence. Generate the frontend starting cache from the imported public synthetic package with `.venv/Scripts/python.exe scripts/export_frontend_cache.py` from this directory; see [frontend cache instructions](../frontend/README.md#initial-data-and-cache). See [the source integration handoff](docs/frontend-source-integration.md) for current behavior, removed design coefficients and remaining modelling limits. Local servers may be running during verification; no hosted deployment is implied.
 
 For a shared deployment, use HTTPS, set the bearer token, and add proper identity/RBAC before treating reviews as authenticated approvals. The provided entry point refuses a non-loopback bind without a token. OpenAPI/health are public. For Azure adoption, the API can run on an application/container host; replace SQLite with a managed relational store and source storage with versioned object storage, then add Entra ID and the chosen AI endpoint. No Azure infrastructure has been created.
 

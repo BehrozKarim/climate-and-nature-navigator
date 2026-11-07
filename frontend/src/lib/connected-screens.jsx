@@ -3,6 +3,9 @@ import Inventory from '../screens/Inventory.jsx';
 import Review from '../screens/Review.jsx';
 import { api, sourceTrace } from './api.js';
 import ReceiptPanel from '../components/ReceiptPanel.jsx';
+import ReviewEvidence, {reviewTitle,reviewQueueLabel,reviewKind,reviewPresentation} from '../components/ReviewEvidence.jsx';
+import InventorySources from '../components/InventorySources.jsx';
+import {cachedResult,storeResult} from './result-cache.js';
 
 const fmt = n => n == null ? 'Unavailable' : Math.round(n).toLocaleString('fi-FI');
 const status = s => ({ blocked:['p-risk','Blocked'], draft:['p-draft','Draft'], approved_for_demo:['p-ok','Approved · demo'], published_source_context:['p-info','Published source'], changes_requested:['p-risk','Changes requested'] })[s] || ['p-rev','In review'];
@@ -16,28 +19,49 @@ function pending(component, body) {
 }
 
 export class ConnectedInventory extends Inventory {
-  componentDidMount() { this.load(); }
+  constructor(...args){super(...args);const data=cachedResult('inventory:2024:false');if(data)this.state={...this.state,remote:data,remoteKey:'2024|false',remoteLive:!!data._live};}
+  componentDidMount() { this._cacheChanged=()=>{this._apiKey=null;this._inventoryCache?.clear();this._inventoryContexts?.clear();this.setState({remoteLive:false});this.load();};window.addEventListener('navigator:dataset',this._cacheChanged);this.load(); }
   componentDidUpdate() { this.load(); }
-  componentWillUnmount() { this._dead = true; }
+  componentWillUnmount() { this._dead = true; this._inventoryAbort?.abort();window.removeEventListener('navigator:dataset',this._cacheChanged); }
   async load() {
     const key = `${this.state.yr}|${this.state.rest}`;
     if (key === this._apiKey) return;
     this._apiKey = key;
     const requestId = this._inventoryRequest = (this._inventoryRequest || 0) + 1;
-    this.setState({ apiError:'' });
+    this._inventoryAbort?.abort();
+    this._inventoryCache ||= new Map();
+    this._inventoryContexts ||= new Map();
+    const context = this._inventoryContexts.get(this.state.rest);
+    const draftFinding = context?.quality_findings?.some(finding => finding.detail?.year === this.state.yr);
+    const historical = !draftFinding && context?.history?.find(row => row.year === this.state.yr);
+    const cached = this._inventoryCache.get(key) || (historical && {...context, selected:historical});
+    if (cached) {
+      this.setState({remote:cached, remoteKey:key, apiError:'', apiLoading:false});
+      return;
+    }
+    const year = this.state.yr, restated = this.state.rest;
+    const controller = this._inventoryAbort = new AbortController();
+    this.setState({ apiError:'', apiLoading:true });
     try {
-      const data = await api.inventory(this.state.yr, this.state.rest);
-      if (!this._dead && this._inventoryRequest === requestId) this.setState({ remote:data, remoteKey:key });
-    } catch(e) { if (!this._dead && this._inventoryRequest === requestId) this.setState({ apiError:e.message }); }
+      const data = await api.inventory(year, restated, {signal:controller.signal});
+      if (!this._dead && this._inventoryRequest === requestId) {
+        if (data.selected?.year !== year) throw new Error('Inventory response does not match the requested year.');
+        data._live=true;storeResult(`inventory:${year}:${restated}`,data);
+        this._inventoryCache.set(key, data);
+        this._inventoryContexts.set(restated, data);
+        this.setState({ remote:data, remoteKey:key, apiError:'', apiLoading:false,remoteLive:true });
+      }
+    } catch(e) { if (!this._dead && this._inventoryRequest === requestId && e.name !== 'AbortError') this.setState({ apiError:e.message, apiLoading:false }); }
   }
   async disposition(finding, outcome) {
     if (this._writing) return;
     this._writing = true;
     try {
       await api.disposition(finding, outcome, `${outcome === 'confirm' ? 'Confirmed' : 'Dismissed'} by local demo analyst after source review.`);
+      this._inventoryCache?.clear(); this._inventoryContexts?.clear();
       this._apiKey = null; await this.load();
       this.props.onToast?.('Disposition saved. Source values and numerical blockers are unchanged.');
-    } catch(e) { this.props.onToast?.(e.message); this._apiKey = null; this.load(); }
+    } catch(e) { this.props.onToast?.(e.message); this._inventoryCache?.clear(); this._inventoryContexts?.clear(); this._apiKey = null; this.load(); }
     finally { this._writing = false; }
   }
   viewModel() {
@@ -58,7 +82,10 @@ export class ConnectedInventory extends Inventory {
     const sourceStep = source => ({ k:'Source', t:source.file || source.table || 'Dataset snapshot', id:[source.dataset_id, source.record_id, source.row_number == null ? null : `row ${source.row_number}`].filter(Boolean).join(' · '), d:source.file_sha256 || 'Source hash unavailable' });
     const notes = [...(data.limitations || []), ...(data.issues || []).map(issue => issue.message).filter(Boolean)];
     return {
-      years:(data.available_years || []).map(year => ({label:year === selected.year && !published && !unavailable ? `${year} draft` : String(year),on:String(year === this.state.yr),pick:() => this.setState({yr:year})})),
+      years:(data.available_years || []).map(year => ({label:history.some(row => row.year === year) ? String(year) : `${year} draft`,on:String(year === this.state.yr),pick:() => this.setState({yr:year})})),
+      syncStatus:<div className="inventory-sync" role="status" aria-atomic="true">
+        {this.state.apiError ? <><span>Couldn’t load {this.state.yr}{this.state.rest ? ' restated' : ''}. Still showing {selected.year} from the last loaded selection. {this.state.apiError}</span><button className="btn" onClick={() => {this._apiKey=null; this.load();}}>Retry</button></> : this.state.apiLoading ? `Loading ${this.state.yr}${this.state.rest ? ' restated' : ''}… Still showing ${selected.year} from the last loaded selection.` : `Showing ${selected.year}${selected.restatement_applied ? ' · source-provided restatement applied' : ' · source-reported values'}`}
+      </div>,
       restStr:String(this.state.rest), toggleRest:() => this.setState({rest:!this.state.rest}),
       restLabel:'Show source-provided restated values',
       isDraft:!published && !unavailable,
@@ -71,10 +98,10 @@ export class ConnectedInventory extends Inventory {
       }),
       hist:history.map(r => ({y:String(r.year),k:known(r.total_tco2e) ? `${Math.round(r.total_tco2e / 1000)}k` : 'Unavailable',h:percent(r.total_tco2e,totalMax),col:r.year === this.state.yr ? 'var(--spruce)' : '#C9D3D1',ink:'var(--muted)',outline:r.year === this.state.yr ? '2px solid var(--spruce)' : '0',aria:`${r.year}: ${fmt(r.total_tco2e)} tCO₂e${r.restatement_applied ? ', restated' : ''}`,pick:() => this.setState({yr:r.year})})),
       s12:history.map(r => ({y:String(r.year),a:percent(r.scopes?.scope1,scopeMax),b:percent(r.scopes?.scope2_market,scopeMax),t1:`Scope 1 ${r.year}: ${fmt(r.scopes?.scope1)} tCO₂e`,t2:`Scope 2 ${r.year}: ${fmt(r.scopes?.scope2_market)} tCO₂e`})),
-      historyNote:history.length ? `t CO₂e · click a year${this.state.rest ? ' · source-provided restatements where available' : ''}` : 'Published history unavailable in this snapshot.',
+      historyNote:history.length ? `t CO₂e · click a year${this.state.remoteKey?.endsWith('|true') ? ' · source-provided restatements where available' : ''}` : 'Published history unavailable in this snapshot.',
       scopeHistoryNote:history.length ? 'Source-reported Scope 1 and market-based Scope 2. Missing values are unavailable.' : 'Scope history unavailable in this snapshot.',
-      feeds:(data.feeds || []).map((f,i) => ({i,name:f.table,rows:fmt(f.row_count)+' rows',scope:'Source feed',dash:'0 113',col:'#5AA9F0',cls:'p-info',st:'Imported · needs review'})),
-      issues:findings.map(f => ({type:f.id,what:f.message,key:f.source_refs.map(s => s.table + ':' + s.row_number).join(' · '),conf:0,confidenceLabel:'Rule check',open:f.resolution === 'open',closed:f.resolution !== 'open',ctxt:f.resolution,ccls:'p-info',bg:'#fff',op:1,accept:() => this.disposition(f,'confirm'),dismiss:() => this.disposition(f,'dismiss')})),
+      sourcePanel:<InventorySources data={data} onTrace={this.props.onTrace} />,
+      issues:findings.map(f => ({type:f.id,what:f.message,key:f.source_refs.map(s => s.table + ':' + s.row_number).join(' · '),conf:0,confidenceLabel:'Rule check',open:this.state.remoteLive && f.resolution === 'open',closed:this.state.remoteLive && f.resolution !== 'open',ctxt:f.resolution,ccls:'p-info',bg:'#fff',op:1,accept:() => this.disposition(f,'confirm'),dismiss:() => this.disposition(f,'dismiss')})),
       openCount:String(findings.filter(f => f.resolution === 'open').length),
       n:{pcf:supplierKnown ? fmt(suppliers.provides_pcf) : 'Unavailable'},supplierTotal:supplierKnown ? `of ${fmt(suppliers.total)}` : '',
       supplierAria:supplierKnown ? `${supplierValue} suppliers provide product carbon footprints. ${supplierNote}` : supplierNote,
@@ -84,7 +111,7 @@ export class ConnectedInventory extends Inventory {
       trSup:() => this.props.onTrace?.({title:'Supplier climate data',value:supplierValue,unit:supplierKnown ? 'provide a product footprint' : '',status:supplierKnown ? 'source_context' : 'unavailable',note:[supplierNote,...notes].join('\n'),steps:[...(suppliers.source ? [sourceStep(suppliers.source)] : []),...(supplierKnown ? [{k:'Source',t:'Supplier master summary',id:`${supplierValue} · ${fmt(suppliers.country_count)} countries`,d:Object.entries(suppliers.sbti_status_counts || {}).map(([label,count]) => `${label}: ${count}`).join(' · ')}] : [])]})
     };
   }
-  render() { return !this.state.remote || this.state.remoteKey !== `${this.state.yr}|${this.state.rest}` || this.state.apiError ? pending(this) : super.render(); }
+  render() { return !this.state.remote ? pending(this) : super.render(); }
 }
 
 export class ConnectedReview extends Review {
@@ -99,8 +126,47 @@ export class ConnectedReview extends Review {
     const selected = this.selectedItem();
     return selected ? <ReceiptPanel key={`${selected.id}|${selected.version}`} review={selected} /> : null;
   }
+  currentEvidence() {
+    const item = this.selectedItem();
+    return item && this.state.evidenceKey === `${item.id}|${item.version}` ? this.state.evidence : null;
+  }
+  evidenceReady() { return !!this.currentEvidence() && !(this.state.sourceErrors || []).length; }
+  assessmentPanel() {
+    const item = this.selectedItem();
+    if (!item) return null;
+    const same = this.state.evidenceKey === `${item.id}|${item.version}`;
+    return <ReviewEvidence review={item} bundle={this.currentEvidence()} records={same ? this.state.sourceRecords : []} sourceErrors={same ? this.state.sourceErrors : []} error={same ? this.state.evidenceError : ''} loading={!same || this.state.evidenceLoading} onRetry={() => {this._detailsKey = null;this.load();}} onTrace={this.props.onTrace}/>;
+  }
   componentDidMount() { this.load(); }
-  componentWillUnmount() { this._dead = true; }
+  componentDidUpdate() { this.loadEvidence(); }
+  componentWillUnmount() { this._dead = true; this._detailsAbort?.abort(); }
+  async loadEvidence() {
+    const item = this.selectedItem();
+    if (!item) { this._detailsAbort?.abort(); this._detailsKey = null; return; }
+    const key = `${item.id}|${item.version}`;
+    if (key === this._detailsKey) return;
+    this._detailsKey = key;
+    this._detailsAbort?.abort();
+    const abort = this._detailsAbort = new AbortController();
+    this.setState({evidenceKey:key,evidence:null,evidenceLoading:true,evidenceError:'',sourceRecords:[],sourceErrors:[]});
+    try {
+      const bundle = await api.reviewExport(item.id,{signal:abort.signal});
+      if (abort.signal.aborted) return;
+      if (bundle.review_item?.id !== item.id || bundle.review_item?.version !== item.version || bundle.review_item?.dataset_id !== item.dataset_id || bundle.run && bundle.run.dataset_id !== item.dataset_id) throw new Error('The review changed or its snapshot does not match. Retry to load the current revision.');
+      if (item.run_id && (bundle.run?.id !== item.run_id || !bundle.run?.inputs || !bundle.run?.output)) throw new Error('The saved calculation is missing from this review export.');
+      const candidates = [...item.lineage.map(node => node.source), ...(bundle.run?.output?.lines || []).map(line => line.factor_source)].filter(Boolean);
+      const references = [...new Map(candidates.map(source => [`${source.dataset_id}:${source.table}:${source.row_number}`,source])).values()];
+      const results = await Promise.allSettled(references.map(async source => {
+        if (source.dataset_id !== item.dataset_id || !source.table || !source.row_number) throw new Error('A source reference is incomplete or belongs to another snapshot.');
+        const record = await api.sourceRow(source,{signal:abort.signal});
+        if (record.source?.dataset_id !== source.dataset_id || record.source?.table !== source.table || record.source?.row_number !== source.row_number || source.file_sha256 && record.source?.file_sha256 !== source.file_sha256) throw new Error('An original source record does not match its saved reference.');
+        return record;
+      }));
+      if (!this._dead && !abort.signal.aborted && this._detailsKey === key) this.setState({evidence:bundle,evidenceLoading:false,sourceRecords:results.filter(result => result.status === 'fulfilled').map(result => result.value),sourceErrors:results.filter(result => result.status === 'rejected').map(result => result.reason.message)});
+    } catch(error) {
+      if (!this._dead && !abort.signal.aborted && this._detailsKey === key) this.setState({evidenceLoading:false,evidenceError:error.message});
+    }
+  }
   async load() {
     this.setState({ apiError:'' });
     try {
@@ -111,6 +177,7 @@ export class ConnectedReview extends Review {
   async act(kind) {
     const item = this.selectedItem();
     if (!item || this._writing) return;
+    if (kind === 'approved' && !this.evidenceReady()) { this.props.onToast?.('Load the assessment evidence before approving.'); return; }
     if (!this.state.note.trim()) { this.setState({noteErr:true}); return; }
     this._writing = true;
     try {
@@ -127,10 +194,16 @@ export class ConnectedReview extends Review {
     const items = remote.items;
     const selected = this.selectedItem();
     v.filters = v.filters.map((f,i) => { const filter = ['all','waiting','blocked','approved'][i]; return {...f,n:String(items.filter(item => this.matches(item,filter)).length),pick:() => this.setState({filter,sel:null,note:'',noteErr:false})}; });
-    v.queue = items.filter(item => this.matches(item)).map(item => ({title:item.title,kind:item.target_type.replaceAll('_',' '),owner:item.owner,cls:status(item.status)[0],st:status(item.status)[1],sel:String(item.id === selected?.id),bg:item.id === selected?.id ? '#F6FBF8' : '#fff',bd:'var(--line)',dx:item.id === selected?.id ? 4 : 0,pick:() => this.setState({sel:item.id,note:'',noteErr:false}) }));
+    v.intro = 'Check the saved result, source records and assumptions. Then record a review note and approve the demo assessment or request changes.';
+    v.queue = items.filter(item => this.matches(item)).map(item => ({title:reviewTitle(item),kind:reviewQueueLabel(item),owner:item.owner,cls:status(item.status)[0],st:status(item.status)[1],sel:String(item.id === selected?.id),bg:item.id === selected?.id ? '#F6FBF8' : '#fff',bd:'var(--line)',dx:item.id === selected?.id ? 4 : 0,pick:() => this.setState({sel:item.id,note:'',noteErr:false}) }));
     v.empty = !v.queue.length;
-    if (selected) v.d = {id:selected.id,ver:String(selected.version),title:selected.title,sum:selected.blocking_reasons.join(' ') || 'Source-linked assessment. Local demo review uses a declared, unverified analyst identity.',value:selected.status === 'blocked' ? 'Blocked' : 'Review',unit:selected.source_status || '',cls:status(selected.status)[0],st:status(selected.status)[1],approved:selected.status === 'approved_for_demo',nodes:selected.lineage.map((l,i) => ({k:l.kind,t:l.source?.file || l.method_version || 'Saved calculation',id:l.source ? `${l.source.table}:${l.source.row_number}` : l.run_id || '',i,bg:'var(--glacier-50)',ink:'var(--glacier-ink)',bd:'transparent',arrow:i < selected.lineage.length-1,delay:`${i*.1}s`})),assume:selected.assumptions,ai:'Source evidence and deterministic checks require human judgment. No owner notification is sent.',aiBg:'var(--glacier-50)',aiInk:'var(--glacier-ink)'};
-    v.log = (this.state.remoteAudit?.events || []).map(e => ({when:new Date(e.created_at).toLocaleDateString(),what:e.event || e.outcome || 'Review event',who:e.actor || 'Declared local analyst',col:'#5AA9F0',anim:''}));
+    const bundle = this.currentEvidence();
+    if (selected) {
+      const presentation = reviewPresentation(selected,bundle,bundle ? this.state.sourceRecords : []);
+      v.d = {id:selected.id,ver:String(selected.version),referenceLabel:reviewKind(selected),title:presentation.title,sum:presentation.summary,value:presentation.value,unit:presentation.unit,cls:status(selected.status)[0],st:status(selected.status)[1],approved:selected.status === 'approved_for_demo',approveDisabled:!this.evidenceReady(),assume:selected.assumptions,ai:presentation.check,aiBg:'var(--glacier-50)',aiInk:'var(--glacier-ink)',nodes:presentation.nodes.map((node,index,array) => ({...node,i:index,bg:'var(--glacier-50)',ink:'var(--glacier-ink)',bd:'transparent',arrow:index < array.length-1,delay:`${index*.1}s`}))};
+    }
+    v.auditTitle = 'Audit trail · selected item';
+    v.log = (bundle?.audit?.events || []).map(e => ({when:new Date(e.created_at).toLocaleDateString('en-GB'),what:e.event === 'registered' ? 'Added to the review queue' : e.detail?.review?.outcome === 'approve' ? 'Demo approval recorded' : e.event === 'reviewed' ? 'Changes requested' : e.event,who:[e.actor,e.detail?.review?.notes].filter(Boolean).join(' · '),col:'#5AA9F0',anim:''}));
     return v;
   }
   render() {

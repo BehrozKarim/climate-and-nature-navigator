@@ -1,21 +1,14 @@
 import React from 'react';
-import { api, backendMode } from './api.js';
+import {api} from './api.js';
 
-export default function BackendGate({ children }) {
-  const [state, setState] = React.useState(backendMode ? 'loading' : 'ready');
-  const [error, setError] = React.useState('');
-  React.useEffect(() => {
-    if (!backendMode) return;
-    let active = true;
-    api.prepare().then(() => { if (active) setState('ready'); }).catch(e => {
-      if (active) { setError(e.message); setState('error'); }
-    });
-    return () => { active = false; };
-  }, []);
-  if (state === 'ready') return children;
-  return <main style={{ padding: 32, maxWidth: 720, margin: '10vh auto', fontFamily: 'var(--f-ui)' }}>
-    <h1 className="h-d">{state === 'loading' ? 'Opening Navigator…' : 'Backend unavailable'}</h1>
-    <p role="status">{state === 'loading' ? 'Loading the selected dataset and review queue.' : error}</p>
-    {state === 'error' && <><button className="btn btn-p" onClick={() => window.location.reload()}>Retry</button>{' '}<a href="/?mode=reference">Open the v3 design preview</a></>}
-  </main>;
+export default function BackendGate({children}) {
+  const [error,setError]=React.useState('');
+  React.useEffect(()=>{
+    let active=true,lastCheck=Date.now();
+    api.verifySnapshot().then(()=>api.prepare()).catch(e=>{if(active)setError(e.message);});
+    const focus=()=>{if(Date.now()-lastCheck<15000)return;lastCheck=Date.now();api.verifySnapshot().then(context=>{if(active)setError('');if(context.changed)return api.prepare();}).catch(e=>{if(active)setError(e.message);});};
+    window.addEventListener('focus',focus);
+    return()=>{active=false;window.removeEventListener('focus',focus);};
+  },[]);
+  return <>{children}{error&&<div className="cache-connection-note" role="status">Showing cached synthetic snapshot. {error}<button className="ev" onClick={()=>{setError('');api.verifySnapshot().then(()=>api.prepare()).catch(e=>setError(e.message));}}>Reconnect</button></div>}</>;
 }
