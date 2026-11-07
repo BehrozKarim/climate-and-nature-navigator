@@ -14,6 +14,8 @@ Open `http://127.0.0.1:5173/`. This default **design preview** reproduces the su
 
 Use the rail to navigate, or link directly to `/#freight`, `/#inventory`, `/#pathways`, `/#climate`, `/#nature`, `/#review`. Ctrl/Cmd+K opens search; Escape closes drawers. Pathway start handles support arrow keys as well as dragging. Maps support pan, zoom, picking and layer controls.
 
+In Freight, choose **Your route** to select From and To from the supported location menus. They contain all 20 configured places, grouped geographically, and support native keyboard type-ahead. Connected mode loads the live backend catalogue; design mode uses a matching offline copy. Each leg shows its mass × distance × factor calculation. HVO and rail substitutions apply to dry truck legs; refrigerated legs retain their existing modes. Alternative routes and their operational feasibility remain illustrative.
+
 The supplied pathway action grid exceeds a narrow phone viewport. That reference behavior is retained for design fidelity; a contained horizontal scroll treatment or stacked mobile layout is a proposed follow-up, not an applied redesign.
 
 ## Backend connections
@@ -29,7 +31,7 @@ Open `http://127.0.0.1:5173/?mode=backend#inventory` to use the connected workfl
 | Workflow | Current connection |
 | --- | --- |
 | Emissions | Published/draft scope values, restatement selection, feed counts, supplier statistics, deterministic findings and persisted dispositions |
-| Freight | Backend route lookup, debounced shipment preview, factor/source trace and coordinate handoff; annual shipment chart and alternative-fuel comparisons still use v3 design assumptions |
+| Freight | Live location catalogue, route lookup, debounced shipment/alternative previews, per-leg arithmetic, factor/source trace and coordinate handoff; annual shipment chart retains the v3 sample |
 | Review | Source-backed queue, filters, declared demo review with notes, version checks, blocked approval protection and persisted audit trail |
 | Search | Snapshot entity search and original row evidence |
 | Ask | Persistent backend conversations, source citations, explicit extractive/AI response labels and error feedback |
