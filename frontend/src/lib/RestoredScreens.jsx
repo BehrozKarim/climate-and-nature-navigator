@@ -36,13 +36,17 @@ function OverviewData({data,geography,history,year=2040,onTrace,onNav,onToast,pe
   const row=data.pathway.selected_year,base=data.inventory?.total_tco2e;
   const values=useTween({total:base,gap:row?.gap_tco2e,cut:base?100*(base-row?.target_tco2e)/base:null,warming:data.climate.selected?.summer_warming_c});
   const chart=chartModel(data.pathway.series,{width:600,height:240,left:46,right:590,bottom:214,start:2019,max:340000});
+  const published=history.filter(row=>Number.isFinite(row.total_tco2e)).map(row=>({year:row.year,value:row.total_tco2e})).sort((a,b)=>a.year-b.year);
+  const planned=data.pathway.series.map(row=>({year:row.year,value:row.emissions_tco2e}));
+  // Anchor the projected line to the last published year so the two series meet.
+  const anchor=published.filter(point=>point.year<planned[0]?.year).at(-1);
   const X=chart.X,Y=chart.Y;
   const model={
     kpis:[{label:`Emissions ${data.inventory?.year||''}`,v:`${fmt(values.total)} t`,w:100,bar:'var(--night)',ink:'var(--ink)',sub:'Published source · tCO₂e',go:()=>onNav('inventory')},{label:`Cut needed by ${year}`,v:`−${fmt(values.cut)} %`,w:values.cut||0,bar:'var(--glacier)',ink:'var(--ink)',sub:'Illustrative target',go:()=>onNav('pathways')},{label:`Gap in ${year}`,v:`${fmt(values.gap)} t`,w:Math.min(100,Math.abs(values.gap||0)/2000),bar:'var(--ember)',ink:'var(--ember-ink)',sub:'After default catalogue actions',go:()=>onNav('pathways')},{label:`Summer warming · ${year}`,v:`${fmt(values.warming,1)} °C`,w:Math.min(100,(values.warming||0)*20),bar:'var(--rape)',ink:'var(--ink)',sub:'Finland · supplied weather exposure',go:()=>onNav('climate')}],
     canvasRef,year,loading:false,labels:(scene?.sites||[]).map(site=>({t:site.name,lon:site.lon,lat:site.lat,h:3.5,op:1,md:0,hs:'site',bg:'rgba(11,26,36,.86)',bd:'var(--night-line)',fw:600,fs:12})),
     layers:[['farms','Farms','#3CCB7F'],['sites','Plants','#3CCB7F'],['arcs','Connections','#5AA9F0']].map(([id,t,c])=>({t,c,on:String(layers[id]),toggle:()=>{map.current?.setLayerVisible(id,!layers[id]);setLayers({...layers,[id]:!layers[id]});}})),
     zin:()=>map.current?.zoomIn(),zout:()=>map.current?.zoomOut(),zreset:()=>{map.current?.reset();setSelection(null);},hasSel:!!selected,sel:selected||{rows:[]},clearSel:()=>setSelection(null),
-    gridD:chart.grid,histD:chart.line(history.map(r=>({year:r.year,value:r.total_tco2e}))),tgtD:chart.target,planD:chart.selected,gapD:chart.gap,yTicks:chart.yTicks,xTicks:[2020,2030,2040,2050].map(y=>({label:String(y),left:X(y)/6})),markL:X(year)/6,
+    gridD:chart.grid,histD:chart.line(published),tgtD:chart.target,planD:chart.line(anchor?[anchor,...planned]:planned),gapD:chart.gap,yTicks:chart.yTicks,xTicks:[2020,2030,2040,2050].map(y=>({label:String(y),left:X(y)/6})),markL:X(year)/6,
     chMove:event=>{const rect=event.currentTarget.getBoundingClientRect();setHover(Math.max(2019,Math.min(2050,Math.round(2019+((event.clientX-rect.left)/rect.width*600-46)/(590-46)*31))));},chLeave:()=>setHover(null),hasHover:hover!=null,
     hov:{y:String(hover),left:X(hover)/6,tipL:Math.min(72,Math.max(2,X(hover)/6+2)),rows:hover<2025?[{k:'Published',v:`${fmt(history.find(r=>r.year===hover)?.total_tco2e)} t`}]:[{k:'With actions',v:`${fmt(data.pathway.series.find(r=>r.year===hover)?.emissions_tco2e)} t`},{k:'Target',v:`${fmt(data.pathway.series.find(r=>r.year===hover)?.target_tco2e)} t`}]},
     todo:[{tag:'Sources',cls:'p-info',title:'Inspect inventory source checks',open:()=>onNav('inventory')},{tag:'Pathway',cls:'p-rev',title:'Explore the supplied action catalogue',open:()=>onNav('pathways')},{tag:'Review',cls:'p-draft',title:'Open assessments and review history',open:()=>onNav('review')}]
