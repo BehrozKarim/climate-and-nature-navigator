@@ -29,6 +29,6 @@ Keep the existing independently cloned repository and its dependencies. Work on 
 - `git diff --check`: passed. No unit tests were added or run. No browser/runtime checks were performed.
 - A fresh read-only reviewer found no material issues across missing/empty suppliers, zero counts, source references, non-preview years, restatements, lifecycle and request sequencing. Corrected its minor wording observation: partial supplier coverage can reflect more than conflicting records.
 - A request sequence guard rejects superseded responses even when year/restatement choices return to an earlier key.
-- Application changes and team documentation remain local and uncommitted on the feature branch. No checkpoint upload, code push, Trail creation or merge was performed.
+- Subsequent user-authorized publication: committed as `2994c24` and pushed to both the team repository and connected fork on `fix/inventory-source-evidence`; Entire Trail #2 links that branch. No main merge, historical session import or captured-checkpoint upload was performed. The user later explicitly approved future automatic checkpoint sharing to the public fork; settings and teammate instructions record that approval. Brain local setup and authored-memory recall now work, without hosted memory sync.
 - Graph was used successfully by the implementer. The reviewer encountered sandbox denial reading `.git` and used direct inspection for its affected queries.
 - Review filter selection and Freight detail consistency from the earlier source review remain separate tasks.

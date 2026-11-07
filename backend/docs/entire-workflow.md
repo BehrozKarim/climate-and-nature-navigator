@@ -7,12 +7,24 @@ Entire supports development of Climate and Nature Navigator. It is not a backend
 | Capability | Status and evidence |
 | --- | --- |
 | CLI | Official Windows release 0.13.1 installed; archive SHA-256 verified against its release checksums. |
-| Sessions | Codex's seven project hooks and Git hooks installed. User approval verified: `entire status` no longer reports unapproved hooks. Automatic checkpoint uploads remain disabled; no captured checkpoint has been demonstrated yet. |
+| Sessions | Codex's seven project hooks and Git hooks installed. Automatic uploads to the public connected fork were explicitly approved on 2026-11-07 and configured for future pushes. No captured checkpoint has been demonstrated for this task. |
 | Graph | Official Windows release 0.6.0 installed and verified. Initial committed-tree index: 58 files, 38 Python files, 690 symbols, 2,510 relations, zero parser failures. Queries found pathway calculations and decision-review implementations/tests. |
-| Brain | Official Windows release 0.5.1 downloaded and checksum verified, but Windows application control blocked execution. Not configured, and no automatic memory extraction runs. |
-| Hosted Trails | Connected fork `rehanali53/climate-and-nature-navigator` is mirrored on Entire. [Trail #1](https://entire.com/gh/rehanali53/-/trails/1) links the setup branch `navigator-entire-setup`; review and merge are pending. |
+| Brain | The previously blocked 0.5.1 executable now runs. Deterministic local setup passed; one Inventory invariant was saved and retrieved with recall and brief. Model backfill, daemon, agent hooks and hosted memory sync remain off. |
+| Hosted Trails | Connected fork `rehanali53/climate-and-nature-navigator` is mirrored on Entire. [Trail #2](https://entire.com/gh/rehanali53/-/trails/2) links the Inventory branch; teammate review and merge remain pending. |
 
-The index figures refer to backend commit `ca4fecdbded727bf333c90b01ddc5921235565d5`, before these workflow files were added. They are not a current file-count guarantee.
+The initial Graph figures refer to backend commit `ca4fecdbded727bf333c90b01ddc5921235565d5`. Brain setup at `2994c24` subsequently reported 93 files and 3,625 symbols. These are observed snapshots, not current file-count guarantees.
+
+## Current team handoff
+
+Follow [team-entire-handoff.md](team-entire-handoff.md). The user explicitly approved automatic future checkpoint uploads, including captured prompts, responses and tool outputs, to public fork `rehanali53/climate-and-nature-navigator`. Shared settings now name that dedicated destination and permit uploads; this clone uses the automatic push policy. Each teammate must enable their agent capture/hooks and check local overrides. Historical conversations have not been imported.
+
+The Inventory fix and team guide were first pushed as `2994c24` on `fix/inventory-source-evidence` to the original repository and the connected fork. `main` was not changed. Teammates can fetch/check out that branch; a pull of main alone does not include the fix yet. New Freight/local-AI commits on the original main were inspected but not merged into this feature branch.
+
+Brain setup completed its eight deterministic components in approximately 130 seconds without an agent call. It indexed code/docs/history but retained zero captured sessions. The authored invariant `fact:4c92d7f410d78e3feff90814`, taxonomy `constraints.inventory.source_evidence`, returned from both `recall` and `brief`, with provenance at `2994c24` and links to the fix plan and adapter. The generated Graph-and-Brain agent guide is committed for future agents. Brain remains local and disconnected from hosted memory sync.
+
+Trail #2 is open and linked to the branch. The CLI's mark-ready request reported that readiness is not tracked because the repository's approval gate is disabled; the Trail remains in building phase. No teammate approval or automated hosted review is claimed. Reviewers can use the open Trail to record their assessment.
+
+Observed configuration caveat: CLI 0.13.1 accepted `--skip-push-sessions=false` but preserved an existing local `push_sessions:false`. Explicitly setting that local JSON field to true is necessary in affected clones. Always verify the resulting status rather than trusting the configuration command's success message.
 
 ## Use the correct checkout
 
@@ -22,7 +34,7 @@ On this machine the checkout is `weatherlens-backend/var/publish/climate-and-nat
 
 ## Team sessions and the connected fork
 
-Observed during the Inventory fix on 2026-11-07:
+Observed before the later sharing approval and Brain setup on 2026-11-07 (historical baseline):
 
 - `entire status`: enabled for Codex; automatic checkpoint pushing disabled; checkpoints read from `origin`.
 - `entire session list`: one ended local Codex session, last prompt `exit`.
@@ -42,7 +54,7 @@ entire configure --local --checkpoint-push-policy manual --skip-push-sessions=fa
 entire status
 ```
 
-These are setup instructions, not changes performed by this fix. `push_sessions=false` blocks explicit checkpoint uploads too; the second command permits uploads while keeping the manual policy, so a Git push does not send checkpoints automatically. Check that status names the intended destination. Keep manual sharing for the demo: do a real coding task in a captured agent session, commit its code on a feature branch, and inspect the checkpoint:
+This is the manual-sharing alternative to the team's current automatic policy. `push_sessions=false` blocks explicit checkpoint uploads too; verify the flag actually changed the setting and correct the local JSON override if it did not. With the manual policy, a Git push does not send checkpoints automatically. Check the destination, do a real task in a captured session, commit it and inspect the checkpoint:
 
 ```powershell
 entire session list
@@ -60,7 +72,7 @@ On Entire, a shared session shows the captured prompts, agent responses, tool ac
 
 ### Challenge demonstration
 
-Use the real Inventory issue: show Graph locating the adapter and API contract, the recorded session explaining why sample evidence was removed, the resulting diff/build, then a teammate's review in a Trail. Demonstrate a new teammate finding the prior decision from the shared context. Brain remains unverified on this machine because its executable was blocked; the project knowledge document is not a substitute for a demonstrated Brain query.
+Use the real Inventory issue: show Graph locating the adapter and API contract, a future captured session explaining the task, the resulting diff/build, and a teammate's Trail review. Brain now recalls the authored Inventory invariant; distinguish that demonstrated memory from automatic extraction of captured sessions, which has not been demonstrated.
 
 For efficiency evidence, compare the same code-discovery task/model with and without Graph and retain actual token usage, output/context bytes and time. Existing query timing is evidence of Graph use, not a measured percentage saving. Do not present the sponsor's 71% figure as this project's result.
 
@@ -68,7 +80,7 @@ References: [official session-sharing walkthrough](https://entire.com/blog/shari
 
 ## Another machine
 
-Install the official CLI using the instructions at <https://docs.entire.com/installation>. Then, from this repository root:
+Install the official CLI using the instructions at <https://docs.entire.com/installation>, then follow the [team handoff guide](team-entire-handoff.md) from this repository root. For a local-only setup without sharing, use:
 
 ```powershell
 entire plugin install graph
@@ -102,11 +114,11 @@ entire checkpoint list
 entire checkpoint explain CHECKPOINT_ID
 ```
 
-Checkpoints stay local. Do not upload transcripts to this public GitHub repository without inspecting them. The shared settings disable automatic uploads; this clone also has the manual checkpoint push policy. A private checkpoint destination can be configured later.
+The local-only commands above keep checkpoints local. The team's approved sharing configuration instead uploads checkpoints to the public connected fork on pushes. Inspect captured context first and verify which policy your clone is using. A private checkpoint destination can be configured separately if needed.
 
 ## Code discovery
 
-The generated `.entire/agent-guide.md` is referenced by both `AGENTS.md` and `CLAUDE.md`. Use Graph to locate code and relationships, then inspect the referenced source and run the appropriate real tests before changing behavior.
+The generated `.entire/agent-guide.md` is referenced by both `AGENTS.md` and `CLAUDE.md`. Start with Brain for prior decisions, then use Graph to locate code and relationships. Inspect referenced source and use a relevant build/source review. Do not write or run unit tests unless the user explicitly requests them.
 
 ```powershell
 entire graph query --repo . --head --profile full --format agent --max-context-bytes 4096 --query "pathway calculate conservative overlap scope floors"
@@ -118,16 +130,16 @@ Drop `--head` when investigating uncommitted source changes. Static relationship
 
 ## Brain readiness
 
-Reviewed project knowledge is in `entire-project-knowledge.md`; it is a normal document, not a fabricated Brain memory. Once a permitted Brain build can run:
+Reviewed project knowledge is in `entire-project-knowledge.md`. Brain now runs and its local setup/recall have been verified. Reproduce the authored decision without paid classification:
 
 ```powershell
 entire brain setup --no-backfill --no-daemon --no-agent-hooks
 entire brain status
-entire brain remember "Missing evidence remains unavailable; do not replace missing business quantities with zero." --path constraints.evidence.missing
-entire brain recall "missing evidence"
+entire brain remember "Connected Inventory must use one snapshot for charts, supplier totals and evidence; missing data stays unavailable and published context is not local approval." --path constraints.inventory.source_evidence --kind invariant --agent none
+entire brain recall "inventory source evidence" --json
 ```
 
-Inspect setup help for the installed release before using these commands. Keep extraction/backfill and background model calls off until deliberately needed. Do not weaken Windows application-control policy to run a blocked executable.
+No application-control policy was weakened; the previously blocked executable started successfully when retried. Setup uses no backfill, daemon or agent hooks. Brain memory stays local unless explicitly connected to a hosted repository; bare connect would resolve this checkout through its original `origin`, so inspect an explicit fork target before hosted sharing. Brain v0.5.1 uses CLI integration, not an MCP server. Windows background watcher support is absent in this release.
 
 ## Hosted Trails and award evidence
 
@@ -135,7 +147,7 @@ Login with your own account using `entire login --device`. Mirroring the existin
 
 This checkout keeps `origin` pointed at `BehrozKarim/climate-and-nature-navigator`, while the additional `entire` remote points at the user's connected fork, `rehanali53/climate-and-nature-navigator`, in the EU cluster. Always check the repository namespace before publishing or creating a Trail. Entire rejected a direct push to protected `main`; the setup is submitted through Trail #1 instead. Use a regular branch name such as `navigator-entire-setup`: the Trail API reserves the `entire/` prefix even though a Git push can accept it.
 
-Once connected, create a real feature branch and Trail for an actual task. Use Graph to find its implementation, capture the new session, run the real tests, and review whether the change matches its stated intent. Do not create dummy changes solely to imply adoption.
+Once connected, create a real feature branch and Trail for an actual task. Use Brain and Graph, capture the new session, run the appropriate allowed verification and review whether the change matches its stated intent. Do not create dummy changes solely to imply adoption.
 
 For an award recording, show:
 
