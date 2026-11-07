@@ -47,7 +47,8 @@ export class NavigatorApi {
   inventory(year = 2024, restated = false) { return this.calculate('inventory', { year, restated }); }
   preview(screen, inputs, options) { return this.calculate(`${screen}/preview`, inputs, options); }
   save(screen, inputs) { return this.calculate(`${screen}/runs`, inputs); }
-  lookup(origin, destination) { return this.calculate('freight/lookup', { origin, destination }); }
+  freightCatalog(options) { return this.datasetRequest('freight/catalog', options); }
+  lookup(origin, destination, options) { return this.calculate('freight/lookup', { origin, destination }, options); }
   trip(inputs, save = false, options) { return this.calculate(save ? 'freight/trips' : 'freight/preview', inputs, options); }
   prepare() { return this.calculate('prepare'); }
   reviews() { return this.datasetRequest('reviews?limit=500'); }
