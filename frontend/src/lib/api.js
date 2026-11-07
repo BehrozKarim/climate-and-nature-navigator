@@ -53,7 +53,8 @@ export class NavigatorApi {
   prepare() { return this.calculate('prepare'); }
   reviews() { return this.datasetRequest('reviews?limit=500'); }
   review(id, input) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/actions`, { body: input }); }
-  reviewExport(id) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/export`); }
+  reviewExport(id, options) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/export`, options); }
+  sourceRow(source, options) { return this.request(`/datasets/${encodeURIComponent(source.dataset_id)}/sources/${encodeURIComponent(source.table)}/${encodeURIComponent(source.row_number)}`, options); }
   receipts(reviewId) { return this.datasetRequest(`reviews/${encodeURIComponent(reviewId)}/receipts`); }
   prepareReceipt(reviewId, expected_version, wallet) { return this.datasetRequest(`reviews/${encodeURIComponent(reviewId)}/receipts`, { body: { expected_version, wallet } }); }
   submitReceipt(id, signed_transaction) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/submit`, { body: { signed_transaction } }); }

@@ -34,7 +34,7 @@ Open `http://127.0.0.1:5173/#inventory` to use the connected workflows (`?mode=b
 | --- | --- |
 | Emissions | Snapshot-backed scope values, both history charts, available years, restatements, feed counts, supplier counts/accessibility/evidence, deterministic findings and persisted dispositions; unavailable and partial supplier coverage are explicit |
 | Freight | Live location catalogue, route lookup, debounced shipment/alternative previews, per-leg arithmetic, factor/source trace and coordinate handoff; annual shipment chart retains the v3 sample |
-| Review | Source-backed queue, filters, declared demo review with notes, version checks, blocked approval protection and persisted audit trail |
+| Review | Human-readable assessment titles, saved results/inputs, per-leg arithmetic, original source rows, blockers, selected-item review history, evidence downloads, version checks and demo-review/receipt controls |
 | Search | Snapshot entity search and original row evidence |
 | Ask | Persistent Gemini/backend conversations in both views, ElevenLabs voice turns, neutral introductions/capability replies, document citations, route/cargo context, explicit provider errors and redirects for coding/unrelated requests |
 | Overview, Pathways, Climate risk, Nature | Complete interactive v3 design screens; live scenario data adapters are still to be connected |
@@ -42,6 +42,14 @@ Open `http://127.0.0.1:5173/#inventory` to use the connected workflows (`?mode=b
 The connected view labels its remaining sample content. Published source context is distinct from a local demo approval. No owner notification is sent. Routes are illustrative estimates. Backend review actions require a note and use the declared identity `Local demo analyst`; they do not grant production approval.
 
 Vite proxies `/v1` and `/health` to `http://127.0.0.1:8000`, so browser requests use the frontend origin. Set `NAVIGATOR_BACKEND_URL` before starting Vite to use another local service. For deployment, configure an equivalent reverse proxy. The optional API token belongs in an authenticated runtime integration; never bake a server token into a Vite build or commit credentials.
+
+## What Review is for
+
+Review is the evidence and decision queue for saved calculations, source-data problems and organisational-boundary events. An analyst checks the result and its evidence, records a note, and approves the demo assessment or requests changes. Published inventory context is informational; blocking source issues require correction and a new assessment. Changing shipment inputs means returning to Freight and saving a new calculation.
+
+The connected view loads the selected review's existing backend export and original source rows. Freight items show the route, cargo mass, distance, saved emissions, per-leg mass × distance × factor arithmetic, factor version/source and distance limitations. Source findings show the reported values that caused the problem. Published inventory and boundary events show their original records. Recorded review notes and the audit trail belong to the selected item. Missing source values remain unavailable.
+
+Evidence requests are bound to the selected item, revision and dataset; changing selection cancels stale requests. Approval stays unavailable until that evidence has loaded successfully. The display does not rewrite saved calculations or frozen Solana receipt bundles. **Download current review data** exports the current review; use the receipt panel's separate **Download frozen bundle** for signed-file verification. The original reference-mode mockup retains its sample summaries.
 
 ## Voice in Ask
 

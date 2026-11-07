@@ -3,6 +3,7 @@ import Inventory from '../screens/Inventory.jsx';
 import Review from '../screens/Review.jsx';
 import { api, sourceTrace } from './api.js';
 import ReceiptPanel from '../components/ReceiptPanel.jsx';
+import ReviewEvidence, {reviewTitle,reviewQueueLabel,reviewKind,reviewPresentation} from '../components/ReviewEvidence.jsx';
 
 const fmt = n => n == null ? 'Unavailable' : Math.round(n).toLocaleString('fi-FI');
 const status = s => ({ blocked:['p-risk','Blocked'], draft:['p-draft','Draft'], approved_for_demo:['p-ok','Approved · demo'], published_source_context:['p-info','Published source'], changes_requested:['p-risk','Changes requested'] })[s] || ['p-rev','In review'];
@@ -99,8 +100,47 @@ export class ConnectedReview extends Review {
     const selected = this.selectedItem();
     return selected ? <ReceiptPanel key={`${selected.id}|${selected.version}`} review={selected} /> : null;
   }
+  currentEvidence() {
+    const item = this.selectedItem();
+    return item && this.state.evidenceKey === `${item.id}|${item.version}` ? this.state.evidence : null;
+  }
+  evidenceReady() { return !!this.currentEvidence() && !(this.state.sourceErrors || []).length; }
+  assessmentPanel() {
+    const item = this.selectedItem();
+    if (!item) return null;
+    const same = this.state.evidenceKey === `${item.id}|${item.version}`;
+    return <ReviewEvidence review={item} bundle={this.currentEvidence()} records={same ? this.state.sourceRecords : []} sourceErrors={same ? this.state.sourceErrors : []} error={same ? this.state.evidenceError : ''} loading={!same || this.state.evidenceLoading} onRetry={() => {this._detailsKey = null;this.load();}} onTrace={this.props.onTrace}/>;
+  }
   componentDidMount() { this.load(); }
-  componentWillUnmount() { this._dead = true; }
+  componentDidUpdate() { this.loadEvidence(); }
+  componentWillUnmount() { this._dead = true; this._detailsAbort?.abort(); }
+  async loadEvidence() {
+    const item = this.selectedItem();
+    if (!item) { this._detailsAbort?.abort(); this._detailsKey = null; return; }
+    const key = `${item.id}|${item.version}`;
+    if (key === this._detailsKey) return;
+    this._detailsKey = key;
+    this._detailsAbort?.abort();
+    const abort = this._detailsAbort = new AbortController();
+    this.setState({evidenceKey:key,evidence:null,evidenceLoading:true,evidenceError:'',sourceRecords:[],sourceErrors:[]});
+    try {
+      const bundle = await api.reviewExport(item.id,{signal:abort.signal});
+      if (abort.signal.aborted) return;
+      if (bundle.review_item?.id !== item.id || bundle.review_item?.version !== item.version || bundle.review_item?.dataset_id !== item.dataset_id || bundle.run && bundle.run.dataset_id !== item.dataset_id) throw new Error('The review changed or its snapshot does not match. Retry to load the current revision.');
+      if (item.run_id && (bundle.run?.id !== item.run_id || !bundle.run?.inputs || !bundle.run?.output)) throw new Error('The saved calculation is missing from this review export.');
+      const candidates = [...item.lineage.map(node => node.source), ...(bundle.run?.output?.lines || []).map(line => line.factor_source)].filter(Boolean);
+      const references = [...new Map(candidates.map(source => [`${source.dataset_id}:${source.table}:${source.row_number}`,source])).values()];
+      const results = await Promise.allSettled(references.map(async source => {
+        if (source.dataset_id !== item.dataset_id || !source.table || !source.row_number) throw new Error('A source reference is incomplete or belongs to another snapshot.');
+        const record = await api.sourceRow(source,{signal:abort.signal});
+        if (record.source?.dataset_id !== source.dataset_id || record.source?.table !== source.table || record.source?.row_number !== source.row_number || source.file_sha256 && record.source?.file_sha256 !== source.file_sha256) throw new Error('An original source record does not match its saved reference.');
+        return record;
+      }));
+      if (!this._dead && !abort.signal.aborted && this._detailsKey === key) this.setState({evidence:bundle,evidenceLoading:false,sourceRecords:results.filter(result => result.status === 'fulfilled').map(result => result.value),sourceErrors:results.filter(result => result.status === 'rejected').map(result => result.reason.message)});
+    } catch(error) {
+      if (!this._dead && !abort.signal.aborted && this._detailsKey === key) this.setState({evidenceLoading:false,evidenceError:error.message});
+    }
+  }
   async load() {
     this.setState({ apiError:'' });
     try {
@@ -111,6 +151,7 @@ export class ConnectedReview extends Review {
   async act(kind) {
     const item = this.selectedItem();
     if (!item || this._writing) return;
+    if (kind === 'approved' && !this.evidenceReady()) { this.props.onToast?.('Load the assessment evidence before approving.'); return; }
     if (!this.state.note.trim()) { this.setState({noteErr:true}); return; }
     this._writing = true;
     try {
@@ -127,10 +168,16 @@ export class ConnectedReview extends Review {
     const items = remote.items;
     const selected = this.selectedItem();
     v.filters = v.filters.map((f,i) => { const filter = ['all','waiting','blocked','approved'][i]; return {...f,n:String(items.filter(item => this.matches(item,filter)).length),pick:() => this.setState({filter,sel:null,note:'',noteErr:false})}; });
-    v.queue = items.filter(item => this.matches(item)).map(item => ({title:item.title,kind:item.target_type.replaceAll('_',' '),owner:item.owner,cls:status(item.status)[0],st:status(item.status)[1],sel:String(item.id === selected?.id),bg:item.id === selected?.id ? '#F6FBF8' : '#fff',bd:'var(--line)',dx:item.id === selected?.id ? 4 : 0,pick:() => this.setState({sel:item.id,note:'',noteErr:false}) }));
+    v.intro = 'Check the saved result, source records and assumptions. Then record a review note and approve the demo assessment or request changes.';
+    v.queue = items.filter(item => this.matches(item)).map(item => ({title:reviewTitle(item),kind:reviewQueueLabel(item),owner:item.owner,cls:status(item.status)[0],st:status(item.status)[1],sel:String(item.id === selected?.id),bg:item.id === selected?.id ? '#F6FBF8' : '#fff',bd:'var(--line)',dx:item.id === selected?.id ? 4 : 0,pick:() => this.setState({sel:item.id,note:'',noteErr:false}) }));
     v.empty = !v.queue.length;
-    if (selected) v.d = {id:selected.id,ver:String(selected.version),title:selected.title,sum:selected.blocking_reasons.join(' ') || 'Source-linked assessment. Local demo review uses a declared, unverified analyst identity.',value:selected.status === 'blocked' ? 'Blocked' : 'Review',unit:selected.source_status || '',cls:status(selected.status)[0],st:status(selected.status)[1],approved:selected.status === 'approved_for_demo',nodes:selected.lineage.map((l,i) => ({k:l.kind,t:l.source?.file || l.method_version || 'Saved calculation',id:l.source ? `${l.source.table}:${l.source.row_number}` : l.run_id || '',i,bg:'var(--glacier-50)',ink:'var(--glacier-ink)',bd:'transparent',arrow:i < selected.lineage.length-1,delay:`${i*.1}s`})),assume:selected.assumptions,ai:'Source evidence and deterministic checks require human judgment. No owner notification is sent.',aiBg:'var(--glacier-50)',aiInk:'var(--glacier-ink)'};
-    v.log = (this.state.remoteAudit?.events || []).map(e => ({when:new Date(e.created_at).toLocaleDateString(),what:e.event || e.outcome || 'Review event',who:e.actor || 'Declared local analyst',col:'#5AA9F0',anim:''}));
+    const bundle = this.currentEvidence();
+    if (selected) {
+      const presentation = reviewPresentation(selected,bundle,bundle ? this.state.sourceRecords : []);
+      v.d = {id:selected.id,ver:String(selected.version),referenceLabel:reviewKind(selected),title:presentation.title,sum:presentation.summary,value:presentation.value,unit:presentation.unit,cls:status(selected.status)[0],st:status(selected.status)[1],approved:selected.status === 'approved_for_demo',approveDisabled:!this.evidenceReady(),assume:selected.assumptions,ai:presentation.check,aiBg:'var(--glacier-50)',aiInk:'var(--glacier-ink)',nodes:presentation.nodes.map((node,index,array) => ({...node,i:index,bg:'var(--glacier-50)',ink:'var(--glacier-ink)',bd:'transparent',arrow:index < array.length-1,delay:`${index*.1}s`}))};
+    }
+    v.auditTitle = 'Audit trail · selected item';
+    v.log = (bundle?.audit?.events || []).map(e => ({when:new Date(e.created_at).toLocaleDateString('en-GB'),what:e.event === 'registered' ? 'Added to the review queue' : e.detail?.review?.outcome === 'approve' ? 'Demo approval recorded' : e.event === 'reviewed' ? 'Changes requested' : e.event,who:[e.actor,e.detail?.review?.notes].filter(Boolean).join(' · '),col:'#5AA9F0',anim:''}));
     return v;
   }
   render() {
