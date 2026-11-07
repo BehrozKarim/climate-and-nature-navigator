@@ -1,7 +1,11 @@
 {
   "enabled": true,
   "strategy_options": {
-    "push_sessions": false
+    "push_sessions": true,
+    "checkpoint_remote": {
+      "provider": "github",
+      "repo": "rehanali53/climate-and-nature-navigator"
+    }
   },
   "telemetry": false
 }
