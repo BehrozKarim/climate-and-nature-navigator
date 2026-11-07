@@ -1,1 +1,1 @@
-export { default } from '../lib/LiveFreight.jsx';
+export { default } from '../lib/RestoredFreight.jsx';

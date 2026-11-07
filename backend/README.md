@@ -201,7 +201,7 @@ The local ZIP resolved the earlier Claude-link access problem. Its screens and c
 
 ## Separation and future deployment
 
-This directory owns the API and database; `../frontend` owns the seven-screen interface. All screens use backend calculations and snapshot source evidence. See [the source integration handoff](docs/frontend-source-integration.md) for current behavior, removed design coefficients and remaining modelling limits. Local servers may be running during verification; no hosted deployment is implied.
+This directory owns the API and database; `../frontend` owns the seven-screen interface. All screens use backend calculations and snapshot source evidence. Generate the frontend starting cache from the imported public synthetic package with `.venv/Scripts/python.exe scripts/export_frontend_cache.py` from this directory; see [frontend cache instructions](../frontend/README.md#initial-data-and-cache). See [the source integration handoff](docs/frontend-source-integration.md) for current behavior, removed design coefficients and remaining modelling limits. Local servers may be running during verification; no hosted deployment is implied.
 
 For a shared deployment, use HTTPS, set the bearer token, and add proper identity/RBAC before treating reviews as authenticated approvals. The provided entry point refuses a non-loopback bind without a token. OpenAPI/health are public. For Azure adoption, the API can run on an application/container host; replace SQLite with a managed relational store and source storage with versioned object storage, then add Entra ID and the chosen AI endpoint. No Azure infrastructure has been created.
 

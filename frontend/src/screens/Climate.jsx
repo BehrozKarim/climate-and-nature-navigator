@@ -1,1 +1,1 @@
-export { Climate as default } from '../lib/LiveScreens.jsx';
+export { default } from '../lib/ClimateView.jsx';
