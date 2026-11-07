@@ -1,6 +1,6 @@
 # WeatherLens backend
 
-A separately runnable Python/FastAPI backend built from the company brief, pain-points summary and unverified transcript in `../new documents/`. The current frontend is not connected to this service yet.
+A separately runnable Python/FastAPI backend using the challenge brief and synthetic package as source evidence. The challenge brief is the only required company-context document; the transcript and pain-point summary are not required for the snapshot. The frontend connects to this service with `?mode=backend`.
 
 The supplied **Navigator app (interactive)** ZIP now defines the feature contract: seven screens plus search, evidence, review and assistant threads. The [frontend API contract](docs/navigator-api-contract.md) maps every screen/control to requests and response fields. Use calculation previews for live controls and saved runs for evidence/review.
 
@@ -24,7 +24,7 @@ The verification run has already populated the local database with the supplied 
 
 | Company need | Backend behavior | Boundary |
 | --- | --- | --- |
-| Fragmented source data | Immutable SQLite snapshots, source file hashes, original record numbers, table browsing | 41 CSV tables and 15 documents in the supplied package/documents; daily parquet, supplier-PCF JSON and workbook excluded |
+| Fragmented source data | Immutable SQLite snapshots, source file hashes, original record numbers, table browsing | 41 CSV tables; document count depends on the supplied package and brief directory; daily parquet, supplier-PCF JSON and workbook excluded |
 | Manual freight emissions | Tonnes × recorded km × mode-specific factor, grouped into Scope 3 categories 4/9 | Recorded distances only; endpoints and route geometry are absent |
 | Trustworthy calculations | Factor/version references, correction and exclusion issues, duplicate quarantine, persistent calculation runs | Arithmetic validation does not establish the accuracy or completeness of the synthetic input |
 | Compare future actions | All 30 actions, ramped annual pathways, conservative overlap adjustment, MACC, costs and a greedy selection shortcut | Illustrative catalogue effects/target proxy; no validated local business case or certified SBTi/FLAG compliance |
@@ -52,6 +52,51 @@ Invoke-RestMethod "$weatherlensUrl/v1/runs/$($freightRun.id)/lines?limit=10"
 ```
 
 With `WEATHERLENS_API_TOKEN` set, add an `Authorization: Bearer <token>` header to every `/v1` request. The OpenAPI UI supports this through **Authorize**. `X-Actor` records the declared person performing a draft action; it is not an authenticated user identity.
+
+### Gemini and document grounding
+
+The existing explanation adapter can use Google's [OpenAI-compatible Gemini endpoint](https://ai.google.dev/gemini-api/docs/openai). Configure these **server environment variables** before starting the backend:
+
+- `WEATHERLENS_LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`
+- `WEATHERLENS_LLM_API_KEY`: your Gemini API key, kept locally on the server
+- `WEATHERLENS_LLM_MODEL`: a compatible Gemini model ID available to your key
+
+The settings file reads the process environment; `.env.example` and an arbitrary `.env` file are not automatically loaded. Use `?mode=backend` in the frontend to invoke this adapter. The default design-preview chatbot uses predefined demo responses regardless of the backend key configuration. No live Gemini request has been verified without a supplied key.
+
+Retrieval currently ranks real document excerpts using lexical matching. It is not embedding/vector retrieval. With a provider configured, the selected excerpts and optional saved-run context go to the model, which must return supported citation IDs. Without a provider, or on invalid output, it returns excerpts with an explicit extractive label. Citation-ID validation does not prove the factual correctness of every generated sentence.
+
+For company context, import only `Apetit_x_SinceAI_2026_Challenge_Brief_EN_FINAL_2026-11-04.md`. Keep it in the local `new documents/` directory at the repository root, or set `WEATHERLENS_DOCUMENT_ROOT` to a directory containing only that brief. Do not add the transcript or pain-point summary. Package methods and framework guidance are still imported from the dataset itself. A new import retains the selected documents and their hashes in a new immutable snapshot; old snapshots are preserved.
+
+From `backend/`, prepare the local brief directory once (the source file must already be beside the repository README):
+
+```powershell
+New-Item -ItemType Directory -Force -Path '..\new documents' | Out-Null
+Copy-Item -LiteralPath '..\Apetit_x_SinceAI_2026_Challenge_Brief_EN_FINAL_2026-11-04.md' -Destination '..\new documents\'
+```
+
+In the terminal that will run the backend, configure Gemini. The key prompt does not put the key in your command history. `--list-models` queries your configured provider, so choose a text-generation model available to your key rather than relying on a hardcoded model name.
+
+```powershell
+$env:WEATHERLENS_LLM_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai'
+$env:WEATHERLENS_LLM_API_KEY = [System.Net.NetworkCredential]::new('', (Read-Host 'Gemini API key' -AsSecureString)).Password
+.\.venv\Scripts\python.exe scripts/test_llm.py --list-models
+$env:WEATHERLENS_LLM_MODEL = Read-Host 'Gemini text model ID from the list'
+$env:WEATHERLENS_DOCUMENT_ROOT = (Resolve-Path '..\new documents').Path
+.\.venv\Scripts\python.exe -m weatherlens_backend
+```
+
+Leave that terminal running. In a **second terminal**, from `backend/`, import/reuse the snapshot and verify retrieval first, then make one real generation request:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/test_llm.py --import-dataset --retrieval-only
+.\.venv\Scripts\python.exe scripts/test_llm.py
+```
+
+The retrieval check must find the brief and never calls the model. The generation check succeeds only when `generation_mode` is `ai_explanation_requires_review`, `provider_status` is `responded`, and the answer includes citations belonging to the selected snapshot. A generic extractive fallback is a failed LLM check, not AI success. Use `--question 'Your specific question'` to test another question. If the API token is enabled, set the same `WEATHERLENS_API_TOKEN` in the second terminal.
+
+For `not_configured`, restart the backend from the terminal containing all three LLM variables. For `unavailable_or_invalid_output`, verify the provider model ID, key, quota, timeout and JSON response compatibility; the backend deliberately retains source excerpts on provider failure. For `skipped_no_evidence`, verify the imported brief or try a more specific question. `.env` files still need an explicit loader; merely saving one does not configure the running process.
+
+Finally, run `npm run dev` in `frontend/` and open `http://127.0.0.1:5173/?mode=backend` to test Ask in the app. Refresh the page after importing a different snapshot. The default URL without that query parameter keeps the predefined design-demo answers.
 
 | Endpoint | Purpose |
 | --- | --- |
@@ -123,7 +168,7 @@ The smoke script launches a temporary HTTP server on loopback, imports the real 
 
 Tests cover known independent arithmetic, duplicates and invalid numbers, source versioning, mixed CSV dialects, missing climate periods, nature attribution/joins, concurrent decision updates, API validation/authentication and provider fallback. [Independent review](docs/code-review.md) records the findings and their follow-up status.
 
-Verified on 2026-11-07: **84 tests passed**, compilation passed, and the actual-package HTTP workflow passed for both the original API and all seven Navigator screen families. The current import contains **474,985 rows across 41 tables and 15 documents**, including the searchable framework digest. The freight run included all **2,339 selected 2025 records**, with zero exclusions. SQLite integrity passed and prior snapshots remain intact. The [Navigator delivery review](docs/navigator-feature-review.md) records the independent findings, regression fixes and remaining scope.
+Original verification on 2026-11-07: **84 tests passed**, compilation passed, and the actual-package HTTP workflow passed for both the original API and all seven Navigator screen families. That verification snapshot contained **474,985 rows across 41 tables and 15 documents**, including the searchable framework digest. The freight run included all **2,339 selected 2025 records**, with zero exclusions. SQLite integrity passed and prior snapshots remain intact. The [Navigator delivery review](docs/navigator-feature-review.md) records the independent findings, regression fixes and remaining scope. New local snapshots follow the brief-only company-context instructions above.
 
 The local ZIP resolved the earlier Claude-link access problem. Its screens and controls are mapped in [navigator-api-contract.md](docs/navigator-api-contract.md), with implementation choices in [navigator-feature-design.md](docs/navigator-feature-design.md). The backend supports a later visual redesign through stable REST operations.
 
