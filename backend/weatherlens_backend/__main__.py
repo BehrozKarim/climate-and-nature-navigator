@@ -1,9 +1,11 @@
 import argparse
 import os
 import uvicorn
+from .config import load_environment
 
 
 def main():
+    load_environment()
     parser = argparse.ArgumentParser(description='Run the standalone WeatherLens backend')
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8000)
