@@ -9,10 +9,10 @@ Open **Apetit-Decision-Studio.html** in a browser. The standalone build bundles 
 | **A1 and A2** | Run the example agent, investigate a source flag, approve a freight correction and export the audit. | Data checks and inbound freight use the supplied raw feeds. Group inventory values are separate simulated placeholders. |
 | **B1 and B2** | Switch base year, boundary and transition scenario, then select levers to compare indicative abatement and cost. | Uses catalogue lever values and 2030 transition prices. Baselines and projections are illustrative. |
 | **C1, C2 and C3** | Choose a crop and region, inspect seasonal parcel rows or switch physical scenarios, then change contract area to price replacement exposure. | Yield and poor-harvest values are simulated. Prices and import premiums are from the supplied 2025 reference table. |
-| **D1 and D2** | Select a mapped catchment to see its pressure calculation or screen an import origin. | Uses the six public development load rows, synthetic geometries and indicative origin table. Ranks and medians apply to the displayed subset. |
+| **D1 and D2** | Select a ranked catchment to see nutrient loads, water condition and the next investigation step. Open regional maps when location matters or screen an import origin. | Uses the six public development load rows, synthetic geometries and indicative origin table. Ranks and medians apply to the displayed subset. |
 | **E** | Ask about freight, FLAG, Foodhills, SBTN or ESRS, open the cited local source and record an expert review. | Curated local retrieval simulation with browser-local review. No model or service is contacted. |
 
-The value-chain graph is an interactive relationship preview. Each node shows its source area and opens the relevant workstream. Agent steps, projections and copilot responses are UI simulations with explicit source and review states.
+The Review desk starts with the highest-impact unresolved freight flag, its owner and the estimated coverage change. Source checks run on demand. Projections and framework answers are UI simulations with source and review controls. The sea-freight answer uses the current calculated shipment total and invalidates its review badge when the underlying total or coverage changes.
 
 ## Reproduce the data
 
@@ -45,5 +45,5 @@ Reviews are simulated and stored in the current browser. Production use would re
 
 ## Visual treatment
 
-The studio uses a dark workspace, an animated value-chain diagram, interactive catchment shapes, responsive charts and a compact two-leg evidence strip for freight. The diagram has a pause control. Reduced-motion preferences leave the diagram and charts readable without animation.
+The workspace uses neutral paper and ink colours with blue for the primary action and selection. The default view highlights one task. D1 uses labelled horizontal bars and a selected catchment summary; methods and regional maps open on demand. Motion shows a running source check or a changed selection. Reduced-motion preferences suppress those transitions.
 

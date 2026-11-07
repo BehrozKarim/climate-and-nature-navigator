@@ -8,27 +8,16 @@ export const tracks = [
   { page: 'copilot', code: 'E', name: 'Evidence copilot', icon: 'Sparkles', detail: 'Ask a question and inspect its sources.', meta: 'E' },
 ];
 
-const graphNodes = [
-  ['farms', 'Farms', 'Sprout', 17, 74, 'Contract growers link crop output, fertiliser and soil to sourcing risk.', '03_farming · farm surveys and parcel plans', 'risk'],
-  ['suppliers', 'Suppliers', 'Package', 17, 27, 'Purchase receipts and supplier footprints explain where materials come from.', '02_raw_feeds · ERP and supplier declarations', 'checks'],
-  ['operations', 'Operations', 'Factory', 47, 49, 'Join purchases, freight and site meters before calculating the inventory.', '02_raw_feeds · shipments and meter readings', 'inventory'],
-  ['emissions', 'Emissions', 'ChartNoAxesCombined', 79, 23, 'Reviewed inventory lines feed the baseline and reduction scenarios.', '01_master · factor library and methodology', 'pathways'],
-  ['catchments', 'Catchments', 'Waves', 79, 74, 'Sourcing locations connect nutrient pressure with the state of receiving waters.', '06_nature · catchments and origin indicators', 'nature'],
-];
-const graphLinks = [
-  'M119 77 C220 77 209 140 329 140', 'M119 212 C225 212 210 140 329 140',
-  'M329 140 C431 140 446 66 553 66', 'M329 140 C425 140 449 212 553 212',
-  'M119 212 C236 269 445 273 553 212',
-];
-
 const documents = {
   accounting: ['GHG Protocol · accounting', 'framework_digest.md · Accounting: GHG Protocol; METHODOLOGY.md §4', 'The challenge uses a well-to-wheel tonne-kilometre method for inbound freight. A missing transport leg affects inventory coverage.'],
+  sea: ['Shipment records and transport factors', 'shipments.csv · EF-TKM-SHIP-BULK and EF-TKM-SHIP-REEFER; emission_factor_library.csv · v2025', 'Sum tonne-km × factor for recorded bulk and refrigerated ship legs, then add approved ship corrections. Ferries appear as a separate mode.'],
   targets: ['SBTi · climate targets and FLAG', 'framework_digest.md · Climate targets: SBTi; SCENARIOS_AND_RISK.md · Track B', 'The challenge separates land-related emissions from the other Scope 3 emissions. Scope 1 and 2, Scope 3 non-FLAG and FLAG use distinct annual reduction assumptions in the rubric.'],
   boundary: ['Structural changes · Foodhills', 'METHODOLOGY.md §1; structural_events.csv · Foodhills', 'The synthetic 2025 inventory includes Bjuv operations from December. Swedish pea growers are outside the 2025 inventory and enter from 2026. A comparable target baseline needs an explicit boundary choice.'],
   nature: ['SBTN · pressure and state', 'NATURE_SBTN.md · D1 priority formula', 'The scoring method combines phosphorus and nitrogen relative to sample medians, then weights for ecological state and phosphorus sensitivity.'],
   csrd: ['CSRD and ESRS · reporting context', 'framework_digest.md · Nature: SBTN, TNFD, ESRS', 'The package digest connects nature-related dependencies and impacts to ESRS E4. Applicability and disclosure obligations need a separately verified assessment.'],
 };
 const questions = [
+  ['sea', 'What did inbound ship freight emit in 2025?', 'sea', '', 'Open freight audit', 'inventory'],
   ['freight', 'Why would missing freight increase emissions?', 'accounting',
     'A shipment can have more than one leg. Adding a previously absent sea leg increases the amount of transport included. Log the before and after, the distance basis and the factor version, then have Logistics verify the carrier evidence.', 'Review the highest-impact sea-leg flag', 'checks'],
   ['flag', 'What counts as FLAG?', 'targets',
@@ -53,8 +42,7 @@ const ranked = studioData.catchments.map((item) => ({
   ...item, score: (item.p / pMedian + 0.5 * item.n / nMedian) * weight[item.status] * item.sensitivity,
 })).sort((a, b) => b.score - a.score);
 
-export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, persist, openCount, inventoryKg, reviewState }) {
-  let node = 'operations';
+export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, persist, openCount, inventoryKg, nextFreight, seaEvidence, reviewState }) {
   let agent = -1;
   let agentTimer;
   let pathYear = '2025';
@@ -76,61 +64,55 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
   let asked = false;
   let reviewTopic;
 
-  const label = (text) => '<span class="panel-label">' + text + '</span>';
   const link = (text, id, style = 'secondary') => '<a class="button ' + style + '" href="#' + id + '">' + text + icon('ArrowUpRight', 15) + '</a>';
   const options = (id, items, value, title) => '<label class="field-select"><span>' + title + '</span><select id="' + id + '">' +
     items.map(([key, text]) => '<option value="' + key + '"' + (value === key ? ' selected' : '') + '>' + text + '</option>').join('') + '</select></label>';
   const tabs = (name, items, active) => '<div class="studio-tabs">' + items.map(([key, text]) =>
     '<button type="button" data-action="' + name + '" data-value="' + key + '" aria-pressed="' + (key === active) + '">' + text + '</button>').join('') + '</div>';
   const metric = (name, value, note = '') => '<div><span>' + name + '</span><strong>' + value + '</strong>' + (note ? '<small>' + note + '</small>' : '') + '</div>';
-  const section = (name, desc, extra = '') => '<header class="section-heading"><div><h2>' + name + '</h2><p>' + desc + '</p></div>' + extra + '</header>';
+  const section = (name, desc, extra = '') => '<header class="section-heading"><div><h2>' + name + '</h2>' + (desc ? '<p>' + desc + '</p>' : '') + '</div>' + extra + '</header>';
   const source = (id) => btn(documents[id][0], 'studio-source', 'FileText', 'source-link', id);
   const panel = (title, desc, body, controls = '') => '<section class="surface studio-panel">' + section(title, desc, controls) + body + '</section>';
 
   function overview() {
-    const active = graphNodes.find(([id]) => id === node);
-    const contours = Array.from({ length: 10 }, (_, i) => {
-      const y = 20 + i * 26;
-      return '<path d="M-35 ' + y + ' C111 ' + (y - 70) + ' 201 ' + (y + 105) + ' 331 ' + (y + 13) +
-        ' S550 ' + (y - 52) + ' 735 ' + (y + 23) + '"/>';
-    }).join('');
-    const network = '<section class="surface network"><header class="section-heading"><div><div class="panel-label"><i></i> RELATIONSHIP MAP</div><h2>Follow the value chain</h2><p>Select a node to see its evidence and next decision.</p></div>' +
-      '<button class="icon-button" type="button" data-action="motion" aria-label="Pause relationship animation">' + icon('Pause', 17) + '</button></header>' +
-      '<div class="network-stage"><svg id="network-flow" viewBox="0 0 700 286" preserveAspectRatio="none" aria-hidden="true">' +
-      '<g class="network-contours">' + contours + '</g><g class="network-paths">' +
-      graphLinks.map((path, i) => '<path class="' + (i === 4 ? 'secondary-path' : '') + '" d="' + path + '"/>').join('') + '</g>' +
-      graphLinks.slice(0, 4).map((path, i) => '<circle class="network-runner" r="3.5"><animateMotion dur="' + (3.2 + i * .55) +
-        's" begin="' + i * .42 + 's" repeatCount="indefinite" path="' + path + '"/></circle>').join('') + '</svg>' +
-      graphNodes.map(([id, name, glyph, x, y]) => '<button type="button" class="network-node" data-action="studio-node" data-value="' + id +
-        '" aria-pressed="' + (node === id) + '" style="--x:' + x + '%;--y:' + y + '%"><span>' + icon(glyph, 18) + '</span><strong>' + name + '</strong></button>').join('') +
-      '</div><div class="network-detail"><div><strong>' + active[1] + '</strong><p>' + active[5] + '</p><small>' + active[6] +
-      '</small></div>' + link('Open workstream', active[7], 'quiet') + '</div></section>';
-    return '<section class="studio-intro"><div>' + label('CLIMATE & NATURE NAVIGATOR') +
-      '<h1>Climate decision studio</h1><p>Trace the footprint, compare the futures and decide what needs review.</p></div>' +
-      '<div class="intro-actions">' + link('Ask copilot', 'copilot', 'primary') + '</div></section>' +
-      '<div class="studio-overview-grid">' + network +
-      '<div class="overview-aside"><section class="surface agent-panel" id="agent-panel">' + agentPanel() + '</section>' +
-      '<section class="surface focus-panel">' + section('Review next', 'Start with records and decisions that need evidence.') +
-      '<a href="#checks"><span class="mini-icon">' + icon('ClipboardList', 17) + '</span><span><strong>' + openCount() +
-      ' source flags</strong><small>2025 synthetic raw feeds</small></span>' + icon('ChevronRight', 15) + '</a>' +
-      '<a href="#inventory"><span class="mini-icon">' + icon('FileCheck2', 17) + '</span><span><strong>' + fmt(inventoryKg() / 1000, 2) +
-      ' t CO₂e</strong><small>Inbound freight · working estimate</small></span>' + icon('ChevronRight', 15) + '</a></section></div></div>' +
-      '<div class="workstream-heading"><h2>Workstreams</h2><span>Five challenge tracks</span></div><div class="track-grid">' +
-      tracks.map(({ page, code, name, icon: glyph, detail, meta }) => '<a class="track-tile" href="#' + page + '"><span class="track-top"><i>' +
-        icon(glyph, 19) + '</i><small>TRACK ' + code + '</small></span><strong>' + name + '</strong><p>' + detail +
-        '</p><span class="track-bottom">' + meta + icon('ArrowUpRight', 16) + '</span></a>').join('') + '</div>';
+    const next = nextFreight();
+    const top = ranked[0];
+    return '<header class="desk-heading"><div><p class="context-label">2025 review workspace</p><h1>Review desk</h1></div>' +
+      link('Ask about the data', 'copilot', 'secondary') + '</header>' +
+      '<section class="desk-next"><div class="next-content"><span class="context-label">' + icon('CircleAlert', 14) +
+      ' ' + (next ? 'Next review' : 'Review status') + '</span><h2>' +
+      (next ? 'Check a missing sea leg' : 'Freight review is up to date') + '</h2><p>' +
+      (next ? esc(next.subject) + ' · Logistics' : 'Open the queue to see the remaining data checks.') + '</p>' +
+      (next ? btn('Review shipment', 'item', 'ArrowRight', 'primary', next.id) : link('Open data checks', 'checks', 'primary')) +
+      '</div><div class="next-number"><strong>' + (next ? '+' + fmt(next.kg / 1000, 2) : fmt(openCount())) +
+      '</strong><span>' + (next ? 't CO₂e if added' : 'open flags') + '</span>' +
+      (next ? '<small>Estimated coverage change</small>' : '') + '</div></section>' +
+      '<div class="desk-grid"><section class="surface desk-list">' + section('Open work', '') +
+      '<a href="#checks"><span class="mini-icon">' + icon('ClipboardList', 18) + '</span><span><strong>Check source records</strong><small>Data quality</small></span><b>' +
+      openCount() + ' flags</b>' + icon('ChevronRight', 16) + '</a>' +
+      '<a href="#nature"><span class="mini-icon">' + icon('Map', 18) + '</span><span><strong>Investigate nutrient pressure</strong><small>Nature</small></span><b>' +
+      top.id + ' first</b>' + icon('ChevronRight', 16) + '</a>' +
+      '<a href="#pathways"><span class="mini-icon">' + icon('GitBranch', 18) + '</span><span><strong>Compare reduction options</strong><small>Pathways</small></span><b>2030</b>' +
+      icon('ChevronRight', 16) + '</a></section>' +
+      '<section class="surface desk-summary">' + section('Inbound freight', '', badge('Working estimate')) +
+      '<div class="desk-total"><strong>' + fmt(inventoryKg() / 1000, 2) + '</strong><span>t CO₂e</span></div>' +
+      '<p class="desk-caption">Scope 3 · Category 4</p><a class="inline-link" href="#inventory">Open freight audit ' + icon('ArrowRight', 16) +
+      '</a></section></div><section class="surface agent-panel" id="agent-panel">' + agentPanel() + '</section>';
   }
 
   function agentPanel() {
     const running = agent >= 0 && agent < stepNames.length;
-    return section('Data agent', 'Simulated collection and validation run.', badge(running ? 'Running' : agent === 4 ? 'Ready' : 'Demo', running ? 'input' : 'review')) +
-      '<ol class="agent-steps">' + stepNames.map((name, index) => '<li class="' + (agent > index ? 'complete' : agent === index ? 'active' : '') +
-        '"><i>' + (agent > index ? icon('Check', 12) : '0' + (index + 1)) + '</i><span>' + name + '</span>' +
-        (agent === index ? '<small>Working</small>' : agent > index ? '<small>Done</small>' : '') + '</li>').join('') + '</ol>' +
-      '<div class="agent-footer">' + (running ? '<span role="status">Simulating agent steps…</span>' :
-        btn(agent === 4 ? 'Replay agent run' : 'Simulate agent run', 'studio-agent', 'Play', 'secondary')) +
-      (agent === 4 ? '<a href="#checks" class="agent-result">Open ' + openCount() + ' source flags ' + icon('ArrowRight', 14) + '</a>' : '') + '</div>' +
-      (agent === 4 ? '<p class="agent-recommendation">Suggested next step · Logistics verifies the flagged sea legs before inventory close.</p>' : '');
+    const complete = agent === stepNames.length;
+    return '<div class="agent-bar"><span class="mini-icon">' + icon('Database', 17) +
+      '</span><div><h2>Source checks</h2><p>' + (running ? stepNames[agent] + '…' : complete
+        ? 'Run complete · ' + openCount() + ' flags to review' : 'Simulated run') +
+      '</p></div>' + (running ? '<span role="status" class="agent-count">' + (agent + 1) + ' / ' + stepNames.length + '</span>'
+        : complete ? '<div class="agent-actions">' + btn('Run again', 'studio-agent', 'Play', 'quiet') +
+          link('Open flags', 'checks') + '</div>' : btn('Run checks', 'studio-agent', 'Play', 'secondary')) + '</div>' +
+      (agent >= 0 ? '<div class="agent-progress" aria-hidden="true">' + stepNames.map((name, i) =>
+        '<i class="' + (agent > i ? 'complete' : agent === i ? 'active' : '') + '"></i>').join('') + '</div>' : '') +
+      (complete ? '<details class="compact-details"><summary>Run log</summary><ol class="agent-steps">' + stepNames.map((name) =>
+        '<li class="complete"><i>' + icon('Check', 12) + '</i><span>' + name + '</span></li>').join('') + '</ol></details>' : '');
   }
 
   function inventoryPreview() {
@@ -139,15 +121,14 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
       ['Scope 2', 'Purchased electricity & heat', 280, 'Market-based example with certificates and supplier factors'],
       ['Scope 3', 'Value chain', 206400, 'Purchased goods, farm footprints, freight and downstream categories'],
     ];
-    return head('2025 emissions inventory', 'Preview a consolidated inventory and drill into the part calculated from package records.', badge('A2 · mixed preview')) +
-      '<div class="studio-two">' + panel('Group inventory preview', 'Simulated figures for testing the reporting workflow.', '<div class="studio-metrics">' +
-      scopes.map(([name, detail, amount]) => metric(name, fmt(amount) + ' t', detail)).join('') + '</div><div class="stack-detail">' +
+    return head('2025 emissions inventory', '', badge('A2 preview')) +
+      '<div class="studio-two">' + panel('Group totals', 'Simulated figures', '<div class="studio-metrics">' +
+      scopes.map(([name, detail, amount]) => metric(name, fmt(amount) + ' t', detail)).join('') + '</div><details class="compact-details"><summary>Scope and boundary</summary><div class="method-body">' +
       scopes.map(([name, , , detail]) => '<p><strong>' + name + '</strong> · ' + detail + '.</p>').join('') +
       '<p>Organisational boundary · continuing operations, with Foodhills included from December 2025 in the package methodology.</p>' +
-      source('accounting') + source('boundary') + '</div>') +
-      panel('Audited calculation', 'Derived from 2025 shipment records and transport factors.', '<div class="studio-metrics vertical">' +
+      source('accounting') + source('boundary') + '</div></details>') +
+      panel('Calculated from shipment records', '', '<div class="studio-metrics vertical">' +
       metric('Scope 3 · Category 4', fmt(inventoryKg() / 1000, 2) + ' t', 'Working inbound freight estimate') + '</div><div class="stack-detail">' +
-      '<p>Track the original rows, apply approved additions, and export the evidence behind each number.</p>' +
       link('Open freight audit', 'inventory', 'primary') + '</div>') + '</div>';
   }
 
@@ -182,6 +163,10 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
     const years = [2025, 2027, 2030, 2035];
     const orderly = scenario === 'net_zero_2050';
     const plan = studioData.levers.filter((row) => actions.has(row.lever_id));
+    const leverNames = {
+      L08: 'Low-carbon fertiliser', L09: 'Precision fertiliser application',
+      L20: 'HVO for trucking', L21: 'Shift freight to ship or rail', L27: 'Improve supplier data',
+    };
     const abatement = plan.reduce((sum, row) => sum + Number(row.abatement_tco2e_2030_design), 0);
     const cost = plan.reduce((sum, row) => sum + Number(row.opex_delta_eur_per_yr), 0);
     const price = studioData.transition.find((row) => row.scenario === scenario && row.year === '2030');
@@ -189,38 +174,44 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
       .reduce((sum, row) => sum + Number(row.abatement_tco2e_2030_design), 0) / 1000;
     const targetLine = years.map((year) => basis * (1 - (year - Number(pathYear)) * target));
     const modelLine = years.map((year) => basis * (1 - (year - 2025) * (orderly ? .018 : .007)) - impact * Math.min((year - 2025) / 5, 1));
-    return head('Reduction pathways', 'Compare a recalculated base year, two transition scenarios and a portfolio of actions.', badge('Track B · simulation')) +
+    const gap = modelLine[2] - targetLine[2];
+    return head('Reduction pathways', '', badge('Simulated')) +
       '<div class="studio-controls">' + options('studio-base', [['2025', '2025 · Foodhills boundary'], ['2019', '2019 · recalculated']], pathYear, 'Base year') +
       options('studio-transition', [['net_zero_2050', 'Orderly transition'], ['delayed_transition', 'Delayed transition']], scenario, 'Transition scenario') +
       options('studio-scope', Object.entries(definitions).map(([key, item]) => [key, item[0]]), scope, 'Emissions boundary') + '</div>' +
-      '<div class="studio-two">' + panel('B1 · Target pathway', name + ' · Illustrative baseline and projections', plot([
+      '<div class="studio-two">' + panel('Emissions through 2035', name, plot([
         { name: 'Modelled pathway', values: modelLine }, { name: 'Target line', values: targetLine },
       ], years, 'kt CO₂e')) +
-      panel('Baseline assumptions', 'Keep boundary changes separate from reductions.', '<div class="stack-detail">' +
+      panel('2030 target gap', '', '<div class="studio-metrics vertical">' +
+        metric(gap >= 0 ? 'Above target' : 'Below target', fmt(Math.abs(gap), 2) + ' kt CO₂e') +
+        '</div><details class="compact-details"><summary>Baseline and assumptions</summary><div class="method-body">' +
         '<p><strong>' + fmt(basis, 1) + ' kt CO₂e</strong> · simulated base-year value</p><p><strong>' + fmt(target * 100, 2) +
         '% / year</strong> · target-rate assumption from the challenge rubric</p><p><strong>€' + price.carbon_price_eur_t +
         ' / t</strong> · illustrative 2030 carbon price</p><p>' +
         (isLatest ? 'Foodhills operations enter from December 2025. The full-year target baseline needs review.' :
           'Recalculate the continuing business after the grain-trade divestment before comparing years.') + '</p>' +
         '<p>The 2026 Pudasjärvi and 2027 Kantvik changes are future boundary events. The preview holds them separate from the action total.</p>' +
-        source('boundary') + source('targets') + '</div>') + '</div>' +
-      panel('B2 · Action portfolio', 'Toggle catalogue levers to see indicative annual costs and abatement.', '<div class="studio-metrics">' +
+        source('boundary') + source('targets') + '</div></details>') + '</div>' +
+      panel('Choose actions', 'Illustrative 2030 catalogue estimates', '<div class="studio-metrics">' +
         metric('2030 design abatement', fmt(abatement) + ' t', 'Selected catalogue levers') +
         metric('Annual operating change', (cost < 0 ? '−' : '') + '€' + fmt(Math.abs(cost))) +
-        metric('Selected actions', String(plan.length), 'Review for overlap before implementation') + '</div><div class="lever-list">' +
+        metric('Selected actions', String(plan.length)) + '</div><div class="lever-list">' +
         studioData.levers.map((row) => '<label class="lever-row"><input type="checkbox" data-lever="' + row.lever_id + '"' +
-          (actions.has(row.lever_id) ? ' checked' : '') + '><span><strong>' + esc(row.name) + '</strong><small>' + row.lever_id + ' · Starts ' +
-          row.earliest_start + ' · ' + row.confidence + ' confidence · ' + esc(row.trade_offs || 'Confirm implementation constraints') + '</small></span>' +
+          (actions.has(row.lever_id) ? ' checked' : '') + '><span><strong>' + esc(leverNames[row.lever_id] || row.name) + '</strong><small>' + row.lever_id +
+          ' · ' + (row.lever_id === 'L27' ? 'Measurement only' : row.confidence + ' confidence') + '</small></span>' +
           '<span class="lever-value"><strong>' + fmt(Number(row.abatement_tco2e_2030_design)) + ' t</strong><small>' +
           (row.indicative_cost_eur_per_tco2e ? '€' + fmt(Number(row.indicative_cost_eur_per_tco2e)) + '/t' : 'Measurement only') +
-          '</small></span></label>').join('') + '</div><div class="cost-chart"><strong>Indicative marginal cost</strong><span>€ per tonne avoided · selected levers</span>' +
+          '</small></span></label>').join('') + '</div><details class="compact-details"><summary>Cost ranking and assumptions</summary><div class="method-body">' +
+          '<p>Indicative euros per tonne avoided for selected levers. Check for overlapping effects before combining them.</p><div class="cost-chart">' +
           plan.filter((row) => row.indicative_cost_eur_per_tco2e).sort((a, b) => Number(a.indicative_cost_eur_per_tco2e) - Number(b.indicative_cost_eur_per_tco2e))
             .map((row) => {
               const value = Number(row.indicative_cost_eur_per_tco2e);
               return '<div><span>' + row.lever_id + '</span><i class="' + (value < 0 ? 'savings' : '') + '" style="--bar:' +
                 Math.min(100, Math.abs(value) / 205 * 100) + '%"></i><strong>' + (value < 0 ? '−€' : '€') + fmt(Math.abs(value)) + '/t</strong></div>';
             }).join('') +
-          '</div><p class="panel-note">Catalogue design estimates are illustrative. L27 improves measurement and contributes 0 t of abatement.</p>');
+          '</div>' + plan.map((row) => '<p><strong>' + row.lever_id + '</strong> · ' + esc(row.name) + ' · Starts ' + row.earliest_start +
+            (row.co_benefits ? ' · ' + esc(row.co_benefits) : '') + (row.trade_offs ? ' · ' + esc(row.trade_offs) : '') + '</p>').join('') +
+          '<p>L27 improves measurement and contributes 0 t of abatement.</p></div></details>');
   }
 
   function risk() {
@@ -235,38 +226,39 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
     const years = seasonal ? ['2027', '2028', '2029', '2030', '2031'] : ['2041', '2045', '2050', '2055', '2060'];
     const projected = seasonal ? [1.015, .948, .984, .914, .971].map((scale) => baseline * scale)
       : [.98, 1.024, .967, 1.011, 1.018].map((scale) => mean * scale);
-    return head('Crop & sourcing risk', 'Explore how weather assumptions translate into yield and replacement cost.', badge('Track C · simulation')) +
+    return head('Crop & sourcing risk', '', badge('Simulated')) +
       tabs('studio-risk-view', [['future', '2041–2060 climate risk'], ['season', '2027–2031 seasonal outlook']], riskView) +
       '<div class="studio-controls">' + options('studio-region', [['fi', 'Southwest Finland'], ['se', 'Southern Sweden']], region, 'Sourcing region') +
       options('studio-crop', [['pea', 'Peas'], ['potato', 'Potatoes'], ['carrot', 'Carrots']], crop, 'Crop') +
       (seasonal ? '<div class="field-select"><span>Weather scenario</span><strong>SSP2–4.5 · fixed in C1</strong></div>'
         : options('studio-ssp', [['ssp126', 'SSP1–2.6 · lower warming'], ['ssp245', 'SSP2–4.5 · middle'], ['ssp585', 'SSP5–8.5 · higher warming']], ssp, 'Physical scenario')) + '</div>' +
-      '<div class="studio-two">' + panel(seasonal ? 'C1 · Seasonal yield outlook' : 'C2 · Long-term yield risk', 'Simulated forecast · the 1991–2020 baseline is illustrative.',
+      '<div class="studio-two">' + panel(seasonal ? 'Seasonal yield outlook' : 'Long-term yield risk', 'Illustrative forecast and 1991–2020 baseline',
         plot([{ name: 'Model preview', values: projected }, { name: 'Historical baseline', values: years.map(() => baseline) }], years, 't / ha')) +
-      panel(seasonal ? 'Seasonal estimates' : 'Risk summary', seasonal ? 'Five illustrated seasons under one weather scenario.' : 'Mean change and the chance of a poor harvest.', '<div class="studio-metrics vertical">' +
+      panel(seasonal ? 'Lowest forecast' : 'Harvest risk', '', '<div class="studio-metrics vertical">' +
         (seasonal ? metric('Lowest modelled season', fmt(Math.min(...projected), 2) + ' t/ha', '2030 · simulated fixture') :
           metric('Mean yield change', '−' + fmt(stress * 100, 1) + '%', 'Against the illustrated baseline') +
           metric('Poor harvest probability', fmt(bad * 100, 1) + '%', 'Yield below 80% of baseline')) +
-        '</div><p class="panel-note">Model preview only. A real forecast would fit the historical yield and weather files, then backtest by crop and region.</p>') + '</div>' +
+        '</div><details class="compact-details"><summary>Model assumptions</summary><div class="method-body"><p>Simulated values. A real forecast would fit the historical yield and weather files and backtest by crop and region.</p></div></details>') + '</div>' +
       (seasonal ? panel('Parcel-year forecast preview', 'Illustrative rows for the C1 submission workflow.', '<div class="studio-plot"><div class="chart-table"><table><thead><tr><th>Parcel</th>' +
         years.map((year) => '<th>' + year + ' · t/ha</th>').join('') + '</tr></thead><tbody>' +
         [1.02, .96, 1.04].map((offset, index) => '<tr><th>' + region.toUpperCase() + '-DEMO-' + (index + 1) + '</th>' +
           projected.map((value) => '<td>' + fmt(value * offset, 2) + '</td>').join('') + '</tr>').join('') +
-        '</tbody></table></div></div>') : panel('C3 · Replacement exposure', 'Turn a modelled yield loss into an incremental import cost.', '<div class="studio-controls compact">' +
+        '</tbody></table></div></div>') : panel('Replacement cost', '', '<div class="studio-controls compact">' +
         '<label class="field-select"><span>Contract area (ha)</span><input id="studio-area" type="number" min="1" max="100000" step="1" value="' + area + '"></label>' +
-        '</div><div class="studio-metrics" id="studio-risk-metrics">' + metric('Modelled shortfall', fmt(shortfall) + ' t') +
-        metric('Incremental replacement cost', '€' + fmt(cost)) + metric('Contract price × import premium', '€' + fmt(price) + ' × ' + fmt(premium * 100) + '%') +
-        '</div><p class="panel-note">Price and premium come from the synthetic 2025 contract-price file. Procurement can test regional diversification or irrigation as follow-up options.</p>'));
+        '</div><div class="studio-metrics" id="studio-risk-metrics">' + metric('Incremental cost', '€' + fmt(cost)) +
+        metric('Modelled shortfall', fmt(shortfall) + ' t') +
+        '</div><details class="compact-details"><summary>Cost assumptions</summary><div class="method-body"><p>Shortfall × €' + fmt(price) + '/t contract price × ' +
+        fmt(premium * 100) + '% import premium. Source · 2025 contract price table.</p><p>Procurement can compare regional sourcing or irrigation before choosing an adaptation plan.</p></div></details>'));
   }
 
   function nature() {
     const item = ranked.find((row) => row.id === selected);
     const originRow = studioData.origins.find((row) => row.origin_country === origin);
     const tabsHtml = tabs('studio-nature-view', [['catchments', 'Catchment priorities'], ['imports', 'Import screening']], natureView);
-    const heading = head('Nature hotspots', 'Connect sourcing to local water pressure and review the evidence behind each priority.', badge('Track D · synthetic data'));
+    const heading = head('Nature priorities', '', badge('2025 reference sample'));
     if (natureView === 'imports') {
       return heading + tabsHtml + '<div class="studio-two">' +
-        panel('D2 · Import origins', 'Indicative categories from the challenge package.', '<div class="rank-list">' +
+        panel('Sourcing origins', 'Indicative screening values', '<div class="rank-list">' +
           studioData.origins.map((row) => '<button type="button" data-action="studio-origin" data-value="' + esc(row.origin_country) +
             '" aria-pressed="' + (row.origin_country === origin) + '"><strong>' + esc(row.origin_country) + '</strong><span>' +
             esc(row.commodity) + '</span>' + icon('ChevronRight', 15) + '</button>').join('') + '</div>') +
@@ -277,49 +269,100 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
           esc(originRow.freshwater_nutrient_status_indicative) + '</strong></p><p>Procurement can confirm farm locations and licensed risk layers.</p>' +
           '<p class="muted">Source · origin_state_of_nature_indicative.csv</p></div>') + '</div>';
     }
-    const pts = Object.values(studioData.shapes).flat();
-    const minX = Math.min(...pts.map((p) => p[0]));
-    const maxX = Math.max(...pts.map((p) => p[0]));
-    const minY = Math.min(...pts.map((p) => p[1]));
-    const maxY = Math.max(...pts.map((p) => p[1]));
-    const mapScale = Math.min(436 / ((maxX - minX) * .54), 304 / (maxY - minY));
-    const x = (lon) => 46 + (lon - minX) * mapScale * .54;
-    const y = (lat) => 39 + (maxY - lat) * mapScale;
-    const map = '<div class="catchment-map"><svg viewBox="0 0 526 390" aria-hidden="true"><defs><pattern id="nature-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M0 28V0H28"/></pattern></defs>' +
-      '<rect width="100%" height="100%" fill="url(#nature-grid)"/>' +
-      Object.entries(studioData.shapes).map(([id, points]) => '<polygon points="' + points.map(([lon, lat]) => x(lon).toFixed(1) + ',' + y(lat).toFixed(1)).join(' ') +
-        '" class="' + (id === selected ? 'selected' : ranked.some((row) => row.id === id) ? 'ranked' : '') + '" ' +
-        (ranked.some((row) => row.id === id) ? 'data-action="studio-catchment" data-value="' + id + '"' : '') + '/>').join('') +
-      '<text x="42" y="375">SOUTHERN SWEDEN</text><text x="340" y="21">SOUTHWEST FINLAND</text></svg><small>Six public dev catchments ranked · other shapes are context</small></div>';
-    return heading + tabsHtml + '<div class="studio-two">' + panel('D1 · Pressure × state', 'Synthetic catchment geometries and public development loads.', map) +
-      panel('Priority list', 'Select a catchment to inspect its score.', '<div class="rank-list">' +
-        ranked.map((row, i) => '<button type="button" data-action="studio-catchment" data-value="' + row.id + '" aria-pressed="' +
-          (row.id === selected) + '"><strong>' + (i + 1) + '</strong><span>' + row.id + ' · ' + row.status + '</span><strong>' +
-          fmt(row.score, 2) + '</strong></button>').join('') + '</div>') + '</div>' +
-      panel('Evidence · ' + item.id, 'Rank ' + (ranked.indexOf(item) + 1) + ' of six public dev rows. Apetit-contract loads only.',
-        '<div class="studio-metrics">' + metric('Phosphorus', fmt(item.p, 2) + ' kg') + metric('Nitrogen', fmt(item.n, 2) + ' kg') +
-        metric('Priority score', fmt(item.score, 2), 'State multiplier ' + weight[item.status] + ' · sensitivity ' + item.sensitivity) +
-        '</div><div class="stack-detail"><p>(P ÷ ' + fmt(pMedian, 2) + ' + 0.5 × N ÷ ' + fmt(nMedian, 2) +
-        ') × ecological-state weight × P sensitivity. Medians are from the six development rows shown.</p>' + source('nature') + '</div>');
+    const rank = ranked.indexOf(item) + 1;
+    const topScore = ranked[0].score;
+    const regionLabel = item.region.startsWith('SE') ? 'Southern Sweden' : 'Southwest Finland';
+    const why = [
+      item.p >= pMedian ? 'Phosphorus above the sample median' : '',
+      item.n >= nMedian ? 'Nitrogen above the sample median' : '',
+      item.status === 'poor' || item.status === 'bad' ? 'Poorer water condition' : '',
+    ].filter(Boolean).join(' · ') || 'Lower nutrient pressure within this sample';
+    const rows = ranked.map((row, i) =>
+      '<button type="button" class="priority-row" data-action="studio-catchment" data-value="' + row.id + '" aria-pressed="' +
+      (row.id === selected) + '" aria-label="Rank ' + (i + 1) + ', ' + row.id + ', ' + row.status + ' water condition, priority score ' +
+      fmt(row.score, 2) + '"><span class="priority-rank">' + (i + 1) + '</span><span class="priority-name"><strong>' + row.id +
+      '</strong><small>' + (row.region.startsWith('SE') ? 'Southern Sweden' : 'Southwest Finland') +
+      '</small></span><span class="priority-state ' + row.status + '">' + row.status + '</span><span class="priority-bar" aria-hidden="true"><i style="--bar:' +
+      row.score / topScore * 100 + '%"></i></span><strong class="priority-score">' + fmt(row.score, 2) + '</strong></button>').join('');
+    return heading + tabsHtml + '<div class="nature-grid"><section class="surface priority-panel">' +
+      section('Catchments to investigate', '2025 · Ranked among six public development catchments') +
+      '<div class="priority-key" aria-hidden="true"><span>Rank</span><span>Catchment</span><span>Water condition</span><span>Priority score</span></div>' +
+      '<div class="priority-list">' + rows + '</div></section><section class="surface catchment-detail" aria-labelledby="catchment-detail-title">' +
+      '<header><div class="context-label">Rank ' + rank + ' of ' + ranked.length + '</div><h2 id="catchment-detail-title">' + item.id + '</h2><p>' + regionLabel +
+      ' · ' + item.status[0].toUpperCase() + item.status.slice(1) + ' water condition</p></header><div class="catchment-loads">' +
+      metric('Phosphorus', fmt(item.p, 2) + ' kg/yr') + metric('Nitrogen', fmt(item.n, 2) + ' kg/yr') +
+      '</div><div class="catchment-why"><strong>Why it ranks here</strong><p>' + why + '.</p></div>' +
+      '<div class="catchment-next"><strong>Next step · Agronomy</strong><p>Check monitoring evidence before choosing a mitigation action.</p></div>' +
+      '<details class="compact-details"><summary>How priority is calculated</summary><div class="method-body"><p>A catchment drains into shared water. The score combines loads from Apetit-contract fields with the ecological status of that water.</p>' +
+      '<p>(P ÷ ' + fmt(pMedian, 2) + ' + 0.5 × N ÷ ' + fmt(nMedian, 2) + ') × ' + weight[item.status] + ' state weight × ' + item.sensitivity +
+      ' phosphorus sensitivity = ' + fmt(item.score, 2) + '.</p><p>Sources · D1_dev_catchments_2025.csv, row ' + item.id +
+      ', and catchments.csv. The six public reference rows are excluded from test scoring.</p>' + source('nature') + '</div></details>' +
+      '</section></div><details class="surface location-details"><summary>See locations on regional maps</summary>' + locationMaps() + '</details>';
+  }
+
+  function locationMaps() {
+    const regions = [
+      ['Southwest Finland', 'CA'],
+      ['Southern Sweden', 'CS'],
+    ];
+    return '<div class="regional-maps">' + regions.map(([name, prefix]) => {
+      const entries = Object.entries(studioData.shapes).filter(([id]) => id.startsWith(prefix));
+      const all = entries.flatMap(([, points]) => points);
+      const minX = Math.min(...all.map(([lon]) => lon));
+      const maxX = Math.max(...all.map(([lon]) => lon));
+      const minY = Math.min(...all.map(([, lat]) => lat));
+      const maxY = Math.max(...all.map(([, lat]) => lat));
+      const scale = Math.min(246 / ((maxX - minX) * .54), 128 / (maxY - minY));
+      const x = (lon) => 145 + (lon - (minX + maxX) / 2) * scale * .54;
+      const y = (lat) => 80 - (lat - (minY + maxY) / 2) * scale;
+      return '<figure class="region-map"><figcaption>' + name + '</figcaption><svg viewBox="0 0 290 160" role="img" aria-label="' +
+        name + ' catchment outlines' + (selected.startsWith(prefix) ? ', selected catchment ' + selected : '') + '">' +
+        entries.map(([id, points]) => {
+          const css = id === selected ? 'selected' : ranked.some((row) => row.id === id) ? 'ranked' : '';
+          const pos = points.map(([lon, lat]) => x(lon).toFixed(1) + ',' + y(lat).toFixed(1)).join(' ');
+          return '<polygon class="' + css + '" points="' + pos + '"/>' +
+            (id === selected ? '<text x="' + x(points.reduce((sum, [lon]) => sum + lon, 0) / points.length).toFixed(1) +
+              '" y="' + y(points.reduce((sum, [, lat]) => sum + lat, 0) / points.length).toFixed(1) + '">' + id + '</text>' : '');
+        }).join('') + '</svg></figure>';
+    }).join('') + '</div><p class="map-legend"><span><i class="outline"></i> Context</span><span><i class="ranked"></i> Ranked in sample</span>' +
+    '<span><i class="selected"></i> Selected</span><small>Synthetic outlines · maps use separate scales</small></p>';
+  }
+
+  function reviewKey(topic) {
+    if (topic[0] !== 'sea') return topic[0];
+    const data = seaEvidence();
+    return ['sea', data.kg.toFixed(2), data.recorded, data.added, data.held, data.open].join(':');
+  }
+
+  function answerContent(topic) {
+    if (topic[0] !== 'sea') return '<p>' + topic[3] + '</p>';
+    const data = seaEvidence();
+    return '<p class="answer-amount">' + fmt(data.kg / 1000, 2) + ' t CO₂e</p><p>2025 inbound bulk and refrigerated ships · ' +
+      data.recorded + ' recorded legs, ' + data.added + ' approved additions.</p><p>' + data.open + ' open ship flags · ' +
+      data.held + ' held rows. Ferry emissions are separate.</p>';
   }
 
   function copilot() {
-    return head('Evidence copilot', 'Ask a question, read the sources and review the answer before reusing it.', badge('Track E · simulated retrieval')) +
-      '<div class="studio-two copilot-grid">' + panel('Ask the workspace', 'Try a challenge topic or one of these prompts.', '<div class="prompt-list">' +
-      questions.map(([id, text]) => btn(text, 'studio-question', 'ArrowUpRight', 'secondary', id)).join('') +
-      '</div><form id="studio-ask-form" class="ask-form"><label for="studio-prompt">Your question</label><div><input id="studio-prompt" name="prompt" value="' +
-      esc(prompt) + '" placeholder="Ask about freight, FLAG or catchments" maxlength="180" required><button class="button primary" type="submit">Ask ' + icon('Send', 16) +
-      '</button></div></form>') + panel('Evidence-backed answer', 'Responses are curated from the local challenge documents.',
-      answering ? '<div class="answer-body"><p role="status">Finding a relevant source…</p><div class="answer-skeleton"><i></i><i></i><i></i></div></div>'
-        : !question ? '<div class="answer-body empty-answer"><span class="mini-icon">' + icon('Sparkles', 22) + '</span><strong>' +
-          (asked ? 'No matching demo topic' : 'Choose a question') + '</strong><p>' + (asked ? 'Try freight, FLAG, Foodhills, catchments or ESRS E4.' : 'The answer, citation and review controls will appear here.') + '</p></div>'
-          : '<article class="answer-body"><div class="answer-status">' + badge(reviewState[question[0]] ? 'Reviewed in demo' : 'Needs expert review',
-            reviewState[question[0]] ? 'done' : 'input') + '</div><h3>' + question[1] + '</h3><p>' + question[3] + '</p><div class="answer-cites"><strong>Retrieved source</strong>' +
-            source(question[2]) + '</div><details><summary>How this answer was assembled</summary><p>The demo matches the question to a local framework or methodology topic, selects the cited section, then uses a curated answer. It does not call a language model.</p></details>' +
+    const reviewed = question && reviewState[reviewKey(question)];
+    const form = '<form id="studio-ask-form" class="ask-form"><label for="studio-prompt">Question</label><div><input id="studio-prompt" name="prompt" value="' +
+      esc(prompt) + '" placeholder="Ask about freight, FLAG or catchments" maxlength="180" required><button class="button primary" type="submit">Ask ' +
+      icon('Send', 16) + '</button></div></form>';
+    return head('Evidence copilot', '', badge('Retrieval preview')) +
+      '<div class="studio-two copilot-grid">' + panel('Ask a question', '', form +
+      '<div class="prompt-list">' + questions.filter(([id]) => ['sea', 'flag', 'nature'].includes(id)).map(([id, text]) =>
+        btn(text, 'studio-question', 'ArrowUpRight', 'secondary', id)).join('') + '</div>') +
+      panel('Answer', '', answering ? '<div class="answer-body"><p role="status">Finding a source…</p></div>'
+        : !question ? '<div class="answer-body empty-answer"><p>' +
+          (asked ? 'No matching topic. Try freight, FLAG, Foodhills, catchments or ESRS.' : 'Ask a question to see the answer and its sources.') + '</p></div>'
+          : '<article class="answer-body"><div class="answer-status">' + badge(reviewed ? 'Reviewed in demo' : 'Needs expert review', reviewed ? 'done' : 'input') +
+            '</div><h3>' + question[1] + '</h3>' + answerContent(question) +
+            '<div class="answer-cites">' + source(question[2]) + '</div><details><summary>How the answer was assembled</summary><p>' +
+            (question[0] === 'sea' ? 'The figure comes from the shipment calculation and current local review decisions.' :
+              'This preview matches the question to a local topic and returns a curated answer with its source.') + '</p></details>' +
             '<div class="answer-actions">' + link(question[4], question[5], 'quiet') +
-            (reviewState[question[0]] ? '<p class="panel-note">' + esc(reviewState[question[0]].note) + '</p>' : btn('Record expert review', 'studio-review', 'Check', 'secondary')) +
-            '</div></article>') + '</div><section class="surface framework-shelf">' + section('Framework shelf', 'Open a source to see the referenced section.') +
-            '<div>' + Object.keys(documents).map(source).join('') + '</div></section>';
+            (reviewed ? '<p class="panel-note">' + esc(reviewed.note) + '</p>' : btn('Record expert review', 'studio-review', 'Check', 'secondary')) +
+            '</div></article>') + '</div><details class="surface compact-details framework-shelf"><summary>Browse framework sources</summary>' +
+            '<div>' + Object.keys(documents).map(source).join('') + '</div></details>';
   }
 
   function refocus(action, value) {
@@ -344,7 +387,6 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
 
   function handle(action, value) {
     switch (action) {
-      case 'studio-node': node = value; refocus(action, value); return true;
       case 'studio-risk-view': riskView = value; refocus(action, value); return true;
       case 'studio-nature-view': natureView = value; refocus(action, value); return true;
       case 'studio-origin': origin = value; refocus(action, value); return true;
@@ -371,12 +413,14 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
       }
       case 'studio-source': {
         const doc = documents[value];
+        const row = value === 'sea' ? seaEvidence().example : undefined;
         show(doc[0], 'Local challenge source', '<p class="drawer-description">' + esc(doc[2]) +
-          '</p><div class="next-box"><strong>Source location</strong><p>' + esc(doc[1]) + '</p></div><p class="panel-note">Source summary for this UI preview.</p>');
+          '</p><div class="next-box"><strong>Source location</strong><p>' + esc(doc[1]) +
+          (row ? '</p><p>Example shipment record · ' + esc(row) : '') + '</p></div>');
         return true;
       }
       case 'studio-review':
-        reviewTopic = question;
+        reviewTopic = reviewKey(question);
         show('Review the answer', 'Evidence copilot · simulated reviewer', '<p class="drawer-description">' + esc(question[1]) +
           '</p><form id="studio-review-form"><label for="studio-review-note">Review note</label><textarea name="note" id="studio-review-note" rows="3" maxlength="280" required></textarea>' +
           '<label class="checkbox"><input type="checkbox" required> I checked the cited source and assumptions.</label><div class="drawer-actions"><button class="button primary" type="submit">Save review</button></div></form>');
@@ -414,14 +458,15 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
       const words = text.toLowerCase();
       const key = /foodhills|acquisition|boundary/.test(words) ? 'boundary' : /\bflag\b|organic soil/.test(words) ? 'flag'
         : /catchment|nutrient|phosphorus|sbtn/.test(words) ? 'nature' : /esrs|csrd|disclosure/.test(words) ? 'csrd'
-          : /freight|shipment|transport|sea leg/.test(words) ? 'freight' : '';
+          : /\bship\b|\bsea\b|\bvessel\b/.test(words) && /emit|emission|how much|total|2025/.test(words) ? 'sea'
+            : /freight|shipment|transport|sea leg/.test(words) ? 'freight' : '';
       ask(questions.find(([id]) => id === key), text);
       return true;
     }
     if (form.id === 'studio-review-form') {
       const note = new FormData(form).get('note').trim();
       if (!note || !reviewTopic) return true;
-      reviewState[reviewTopic[0]] = { note, at: new Date().toISOString() };
+      reviewState[reviewTopic] = { note, at: new Date().toISOString() };
       persist();
       render();
       document.querySelector('#drawer').close();

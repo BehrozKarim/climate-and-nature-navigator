@@ -1,13 +1,13 @@
 import '@fontsource-variable/manrope/wght.css';
 import {
   createElement, ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, ClipboardList, Download,
-  FileCheck2, FileText, Gauge, Package, Pause, Play, Search, Ship, Truck, X,
-  Database, GitBranch, Sprout, Map, Sparkles, Factory, Waves, ChartNoAxesCombined, Send, LayoutDashboard,
+  FileCheck2, FileText, Gauge, Package, Play, Search, Ship, Truck, X,
+  Database, GitBranch, Sprout, Map, Sparkles, Send, LayoutDashboard,
 } from 'lucide';
 import { factors, issues, version, findLeg, freight, fuelComparison, estimateKg, issueId } from './freight.js';
 import { createStudio, tracks } from './studio.js';
 
-const icons = { ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, ClipboardList, Download, FileCheck2, FileText, Gauge, Package, Pause, Play, Search, Ship, Truck, X, Database, GitBranch, Sprout, Map, Sparkles, Factory, Waves, ChartNoAxesCombined, Send, LayoutDashboard };
+const icons = { ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, ClipboardList, Download, FileCheck2, FileText, Gauge, Package, Play, Search, Ship, Truck, X, Database, GitBranch, Sprout, Map, Sparkles, Send, LayoutDashboard };
 const icon = (name, size = 18) => createElement(icons[name], {
   width: size, height: size, 'stroke-width': 1.65, 'aria-hidden': 'true',
 }).outerHTML;
@@ -29,9 +29,8 @@ const main = document.querySelector('#main');
 const nav = document.querySelector('#navigation');
 const drawer = document.querySelector('#drawer');
 const announce = document.querySelector('#announcement');
-const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 const storageKey = 'apetit-workbench-2025-v1';
-let saved = { decisions: {}, history: [], paused: false };
+let saved = { decisions: {}, history: [] };
 try {
   const stored = JSON.parse(localStorage.getItem(storageKey));
   if (stored?.decisions && Array.isArray(stored.history)) saved = stored;
@@ -65,7 +64,8 @@ function closeButton() {
   return '<button type="button" class="icon-button" data-action="close" aria-label="Close details">' + icon('X', 21) + '</button>';
 }
 function head(title, description, action = '') {
-  return '<header class="page-heading"><div><h1>' + title + '</h1><p>' + description + '</p></div>' + action + '</header>';
+  return '<header class="page-heading"><div><h1>' + title + '</h1>' +
+    (description ? '<p>' + description + '</p>' : '') + '</div>' + action + '</header>';
 }
 function badge(text, kind = 'review') {
   return '<span class="status ' + kind + '"><i></i>' + text + '</span>';
@@ -81,6 +81,19 @@ const studio = createStudio({
   icon, esc, fmt, btn, head, badge, show, render, persist,
   openCount: () => open().length,
   inventoryKg: () => freight(decisions()).kg,
+  nextFreight: () => {
+    const issue = open().filter((candidate) => candidate.factor).sort(byImpact)[0];
+    return issue && { id: issueId(issue), subject: issue.subject, kg: estimateKg(issue) };
+  },
+  seaEvidence: () => {
+    const data = freight(decisions());
+    const recorded = data.included.filter((leg) => leg.group === 'Ship');
+    const added = data.adjustments.filter((leg) => leg.group === 'Ship');
+    return { kg: data.totals.Ship, recorded: recorded.length, added: added.length,
+      held: data.held.filter((leg) => leg.group === 'Ship').length,
+      open: open().filter((issue) => issue.factor?.startsWith('EF-TKM-SHIP')).length,
+      example: recorded[0]?.id };
+  },
   reviewState: saved.answerReviews,
 });
 
@@ -118,7 +131,7 @@ function checkRows() {
 }
 
 function checks() {
-  return head('Data checks', 'Investigate flags from the raw files. Each one shows the rule, source and person to follow up with.',
+  return head('Data checks', open().length + ' flags to review',
     btn('Export A1 candidates', 'a1', 'Download')) +
     '<div class="work-grid"><section class="surface work-table"><div class="filter-bar"><div class="filters" aria-label="Filter by source">' +
     [['all', 'All feeds'], ...Object.entries(sources).map(([key, [label]]) => [key, label])].map(([key, label]) =>
@@ -185,17 +198,6 @@ function fuelPage() {
     ' kg CO₂e per tonne-km, from the 2025 synthetic factor library. This is a single lever sensitivity test.</p></details></section>';
 }
 
-function syncMotion() {
-  const route = document.querySelector('#network-flow');
-  const control = document.querySelector('[data-action=motion]');
-  if (!route || !control) return;
-  const stopped = saved.paused || reduce.matches;
-  if (stopped) route.pauseAnimations?.();
-  else route.unpauseAnimations?.();
-  control.hidden = reduce.matches;
-  control.setAttribute('aria-label', stopped ? 'Play relationship animation' : 'Pause relationship animation');
-  control.innerHTML = icon(stopped ? 'Play' : 'Pause', 16);
-}
 function render(focus = false) {
   const current = page();
   const dataViews = { checks: 'A1 · Data checks', 'inventory-preview': 'A2 · Inventory preview', inventory: 'Freight audit', fuel: 'Fuel sensitivity' };
@@ -204,12 +206,11 @@ function render(focus = false) {
   nav.innerHTML = '<span class="rail-heading">Workspace</span>' + destinations.map(({ page: key, name, icon: glyph, code }) =>
     '<a href="#' + key + '"' + (active === key ? ' aria-current="page"' : '') + '>' +
     icon(glyph, 17) + '<span>' + name + '</span>' + (code ? '<small>' + code + '</small>' : '') + '</a>').join('');
-  document.querySelector('#studio-breadcrumb').innerHTML = 'Workspace <span>/</span> <strong>' + pages[current] + '</strong>';
+  document.querySelector('#studio-breadcrumb').textContent = pages[current];
   const views = { ...studio, checks, 'inventory-preview': studio.inventoryPreview, inventory, fuel: fuelPage };
   const tabs = dataViews[current] ? '<div class="studio-tabs data-tabs">' + Object.entries(dataViews).map(([id, name]) =>
     '<a href="#' + id + '"' + (id === current ? ' aria-current="page"' : '') + '>' + name + '</a>').join('') + '</div>' : '';
   main.innerHTML = tabs + (flash ? '<div class="save-banner" role="status">' + icon('Check', 17) + esc(flash) + '</div>' : '') + views[current]();
-  syncMotion();
   if (focus) main.focus({ preventScroll: true });
 }
 
@@ -353,15 +354,14 @@ function exportDecisions() {
   ]);
 }
 
-document.addEventListener('pointerdown', () => { pointer = true; }, { passive: true });
-document.addEventListener('keydown', () => { pointer = false; });
+document.addEventListener('pointerdown', () => { pointer = true; document.documentElement.dataset.input = 'pointer'; }, { passive: true });
+document.addEventListener('keydown', () => { pointer = false; document.documentElement.dataset.input = 'keyboard'; });
 document.addEventListener('click', (event) => {
   const control = event.target.closest('[data-action]');
   if (!control) return;
   const { action, value } = control.dataset;
   if (studio.handle(action, value)) return;
   switch (action) {
-    case 'motion': saved.paused = !saved.paused; persist(); syncMotion(); break;
     case 'item': issueDetails(issues.find((issue) => issueId(issue) === value)); break;
     case 'leg': showLeg(value); break;
     case 'back': issueDetails(selectedIssue); break;
@@ -443,7 +443,6 @@ main.addEventListener('submit', (event) => {
   if (studio.submit(event.target)) event.preventDefault();
 });
 document.querySelector('.skip-link').addEventListener('click', (event) => { event.preventDefault(); main.focus(); });
-reduce.addEventListener('change', syncMotion);
 document.querySelector('#dataset-credit').textContent = sourceCredit + ' · v' + version;
 render();
 
