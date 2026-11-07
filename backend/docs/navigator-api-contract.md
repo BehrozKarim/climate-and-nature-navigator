@@ -1,5 +1,7 @@
 # Navigator frontend API contract
 
+Current integration: every screen uses the backend. The [source integration handoff](frontend-source-integration.md) supersedes design-era crop/nutrient sensitivities and route examples below. Climate exposes source weather indicators with unavailable yield forecasts; Nature exposes contract/ecological/monitoring context with unavailable attributed loads and mitigation benefits. Geography and read-only annual freight previews are documented in that handoff and in the regenerated OpenAPI schema. Pathway requests also accept validated `start_years` overrides.
+
 This contract follows `Navigator app (interactive)-html-v1.zip`. Visual components can be redesigned independently. All paths below start with `/v1/navigator`; original `/v1` dataset, evidence, run and decision endpoints remain available.
 
 ## Start and shared controls

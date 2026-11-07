@@ -1,77 +1,11 @@
 import React from 'react';
 
-const ITEMS = [
-  { id: 'RV-101', status: 'blocked', kind: 'Inventory line', owner: 'Sustainability team', title: '2025 inventory · Scope 3 draft', value: '71 534 593', unit: 'tCO₂e as drafted', ver: 2,
-    sum: 'The preliminary 2025 Scope 3 line is 300× the 2024 value. Scope 1 and Scope 2 drafts are also far off trend.',
-    nodes: [['Source file', 'draft_report_summary_2025.csv', 'report:2025:scope3'], ['Check', 'Trend vs published 2024', '238 410 → 71 534 593'], ['Rule', 'Issue type unit_error', 'TASKS_AND_SCORING.md'], ['Result', 'Blocked from the inventory', 'until source rows are fixed'], ['Review', 'Sustainability team', 'pending']],
-    assume: ['Compared with published_inventory_history.csv, year 2024.', 'Draft status is preliminary.', 'No structural change explains a 300× jump.'],
-    ai: 'High confidence (97 %) of a unit error, for example kilograms booked as tonnes. Fix the source rows, then recalculate the inventory.' },
-  { id: 'RV-102', status: 'review', kind: 'Base year', owner: 'Sustainability team', title: 'Base-year recalculation after the Foodhills acquisition', value: '~300', unit: 'Swedish pea growers enter Scope 3', ver: 1,
-    sum: 'Foodhills AB (Bjuv, frozen peas) joined the group on 27 Nov 2025. The SBTi base year must include it.',
-    nodes: [['Source file', 'structural_events.csv', '2025-11-27 · acquisition'], ['Rule', 'Base-year recalculation', 'framework_digest.md · GHG Protocol'], ['Linked data', 'foodhills_odlingsdata_se.csv', '2 683 rows'], ['Result', 'Recalculated base year', 'draft'], ['Review', 'Sustainability team', 'pending']],
-    assume: ['2025 is the SBTi base year.', 'Swedish grower data maps to the same crop categories as Finland.', 'Bjuv site data from 2025 onwards (sites.csv).'],
-    ai: 'The Swedish grower file uses its own column names and units. Confirm the field mapping before the base year is recalculated.' },
-  { id: 'RV-103', status: 'draft', kind: 'Calculation', owner: 'Logistics', title: 'Freight 2025 · 2 339 legs recalculated', value: '9 437', unit: 'tCO₂e', ver: 1,
-    sum: 'Every 2025 shipment leg recalculated as tonnes × kilometres × mode factor, with the source row and factor version kept per leg.',
-    nodes: [['Source file', 'shipments.csv', 'year = 2025 · 2 339 legs'], ['Emission factor', 'emission_factor_library.csv', 'EF-TKM-* · v2025'], ['Calculation', 'Σ t × km × factor', '7 434 road + 2 003 sea'], ['Check', 'Missing legs and mode labels', 'missing_leg · mode_mislabel'], ['Review', 'Logistics', 'pending']],
-    assume: ['Recorded distances are used as given.', 'Well-to-wheel factors per GLEC-style framework.', 'New shipments without distances go through the route lookup and are flagged as estimates.'],
-    ai: 'Totals reconcile with tonne-km per mode. Road carries 79 % of freight emissions.' },
-  { id: 'RV-104', status: 'review', kind: 'Lever', owner: 'Logistics', title: 'Lever L20 · HVO100 abatement recomputed', value: '3 139', unit: 'tCO₂e vs 3 200 design', ver: 2,
-    sum: 'The lever catalogue gives a design estimate. Navigator recomputed it from 2025 dry-truck tonne-km.',
-    nodes: [['Source file', 'decarbonisation_levers.csv', 'L20 · 3 200 t design'], ['Linked data', 'shipments.csv', '43.6 M tkm dry truck'], ['Calculation', '(0.092 − 0.020) kg/tkm', '= 3 139 t'], ['Check', 'Within 2 % of design', 'consistent'], ['Review', 'Logistics', 'pending']],
-    assume: ['Applies to dry trucking only; no HVO factor for temperature-controlled trucks in the library.', 'HVO100 factor EF-TKM-TRUCK-HVO, version 2025.'],
-    ai: 'Consistent with the design value. The trade-off is HVO feedstock sustainability; ask carriers for feedstock evidence.' },
-  { id: 'RV-105', status: 'draft', kind: 'Nature', owner: 'Farm advisors', title: 'Catchment priority 2025 · SBTN step 2', value: '42', unit: 'catchments ranked', ver: 1,
-    sum: 'Pressure × state ranking of catchments with Apetit contract parcels, using the D1 formula.',
-    nodes: [['Source file', 'catchments.csv', '42 catchments'], ['Linked data', 'parcels.geojson · parcels.csv', '14 213 parcels'], ['Calculation', 'D1 priority formula', '× state weight × p_sensitivity'], ['Check', 'Calibrated to monitored loads', '15 outlets · 2019–2025'], ['Review', 'Farm advisors', 'pending']],
-    assume: ['State weights: good 1.0, moderate 1.2, poor 1.5, bad 1.8.', 'Monitored loads include non-contract farmland and natural background.'],
-    ai: 'CA18 (lake, bad status) ranks highest in south-west Finland. Field-level loads carry ±10–15 % sampling uncertainty.' },
-  { id: 'RV-106', status: 'approved', kind: 'Inventory', owner: 'Sustainability team', title: '2024 inventory published', value: '244 724', unit: 'tCO₂e', ver: 4,
-    sum: 'Scope 1: 6 251, Scope 2 (market): 63, Scope 3: 238 410 tCO₂e.',
-    nodes: [['Source file', 'published_inventory_history.csv', 'year = 2024'], ['Calculation', 'Scope 1 + 2 + 3', '= 244 724'], ['Review', 'Sustainability team', 'approved']],
-    assume: ['Market-based Scope 2.', 'GHG Protocol Corporate and Scope 3 standards.'],
-    ai: 'No open issues.' }
-];
-const STC = { blocked: ['p-risk', 'Blocked'], review: ['p-rev', 'In review'], draft: ['p-draft', 'AI draft'], approved: ['p-ok', 'Approved'], changes: ['p-risk', 'Changes requested'] };
-const NODEC = { 'Source file': ['#E3F0FC', '#1B5E96'], 'Linked data': ['#E3F0FC', '#1B5E96'], 'Emission factor': ['#FCF1CC', '#6B4A00'], 'Calculation': ['#DFF6EA', '#0D6A3C'], 'Check': ['#FCE5DB', '#A43A14'], 'Rule': ['#EBEFEE', '#253642'], 'Result': ['#EBEFEE', '#253642'], 'Review': ['#fff', '#253642'] };
-const LOG0 = [
-  { when: 'Earlier', what: 'Freight 2025 recalculated by Navigator', who: 'Navigator · RV-103 · AI draft', col: '#56666F' },
-  { when: 'Earlier', what: '2025 draft Scope 3 blocked by data-quality check', who: 'Navigator · RV-101 · unit_error', col: '#EF6A3A' },
-  { when: 'Earlier', what: 'Emission factor library loaded, version 2025', who: 'Data pipeline · emission_factor_library.csv', col: '#5AA9F0' },
-  { when: 'Earlier', what: '2024 inventory approved and published', who: 'Sustainability team · RV-106', col: '#3CCB7F' }
-];
-
 export default class Review extends React.Component {
-  constructor(...a) { super(...a); const s = {}; ITEMS.forEach((i) => { s[i.id] = i.status; }); this.state = { st: s, sel: 'RV-101', filter: 'all', note: '', noteErr: false, log: LOG0, flip: 0, stamp: '' }; }
-  componentDidUpdate() { if (this.state.sel !== this._sel) { const first = this._sel == null; this._sel = this.state.sel; if (!first) this.setState({ flip: this.state.flip + 1 }); } }
-  act(kind) {
-    const st = this.state; const it = ITEMS.find((i) => i.id === st.sel);
-    if (kind === 'changes' && !st.note.trim()) { this.setState({ noteErr: true }); return; }
-    const s = Object.assign({}, st.st); s[it.id] = kind;
-    const entry = { when: 'Just now', what: (kind === 'approved' ? 'Approved: ' : 'Change requested: ') + it.title, who: 'Sustainability team · ' + it.id + (st.note.trim() ? ' · “' + st.note.trim() + '”' : ''), col: kind === 'approved' ? '#3CCB7F' : '#EF6A3A', fresh: true };
-    this.setState({ st: s, note: '', noteErr: false, log: [entry].concat(st.log.map((l) => Object.assign({}, l, { fresh: false }))) });
-    if (this.props.onToast) this.props.onToast(kind === 'approved' ? 'Approved and logged to the audit trail' : 'Change requested · ' + it.owner + ' notified');
-  }
+  constructor(...args) { super(...args); this.state={sel:null,filter:'all',note:'',noteErr:false,flip:0}; }
+  componentDidUpdate() { if(this.state.sel!==this._sel){const first=this._sel==null;this._sel=this.state.sel;if(!first)this.setState({flip:this.state.flip+1});} }
   viewModel() {
-    const st = this.state; const sel = ITEMS.find((i) => i.id === st.sel) || ITEMS[0]; const sStat = st.st[sel.id];
-    const match = (i) => st.filter === 'all' || (st.filter === 'waiting' ? (st.st[i.id] === 'review' || st.st[i.id] === 'draft' || st.st[i.id] === 'changes') : st.st[i.id] === st.filter);
-    const list = ITEMS.filter(match);
-    const cnt = (f) => ITEMS.filter((i) => f === 'all' || (f === 'waiting' ? ['review', 'draft', 'changes'].indexOf(st.st[i.id]) > -1 : st.st[i.id] === f)).length;
-    return {
-      filters: [['all', 'All'], ['waiting', 'Waiting'], ['blocked', 'Blocked'], ['approved', 'Approved']].map((f) => ({ label: f[1], n: String(cnt(f[0])), on: st.filter === f[0] ? 'true' : 'false', pick: () => this.setState({ filter: f[0] }) })),
-      queue: list.map((i) => ({ title: i.title, kind: i.kind, owner: i.owner, cls: STC[st.st[i.id]][0], st: STC[st.st[i.id]][1], sel: i.id === sel.id ? 'true' : 'false', bg: i.id === sel.id ? '#F6FBF8' : '#fff', bd: i.id === sel.id ? 'var(--spruce)' : 'var(--line)', dx: i.id === sel.id ? 4 : 0, pick: () => this.setState({ sel: i.id, note: '', noteErr: false }) })),
-      empty: list.length === 0, flipCls: st.flip % 2 ? 'swap-a' : 'swap-b',
-      d: {
-        id: sel.id, ver: String(sel.ver), title: sel.title, sum: sel.sum, value: sel.value, unit: sel.unit, cls: STC[sStat][0], st: STC[sStat][1], approved: sStat === 'approved' && sel.status !== 'approved',
-        nodes: sel.nodes.map((n, k) => ({ k: n[0], t: n[1], id: n[2], i: k, bg: (NODEC[n[0]] || NODEC.Rule)[0], ink: (NODEC[n[0]] || NODEC.Rule)[1], bd: n[0] === 'Review' ? 'var(--ink-2)' : 'transparent', arrow: k < sel.nodes.length - 1, delay: (k * 0.32).toFixed(2) + 's' })),
-        assume: sel.assume, ai: sel.ai, aiBg: sel.status === 'blocked' ? 'var(--clay-50)' : 'var(--spruce-50)', aiInk: sel.status === 'blocked' ? 'var(--clay-ink)' : 'var(--spruce-ink)'
-      },
-      note: st.note, noteErr: st.noteErr, setNote: (e) => this.setState({ note: e.target.value, noteErr: false }),
-      submit: (e) => { e.preventDefault(); }, approve: () => this.act('approved'), reqChange: () => this.act('changes'),
-      log: st.log.map((l) => Object.assign({}, l, { anim: l.fresh ? 'rise' : '' }))
-    };
+    return {filters:[['all','All'],['waiting','Waiting'],['blocked','Blocked'],['approved','Approved']].map(([id,label])=>({label,n:'0',on:String(this.state.filter===id)})),queue:[],empty:true,flipCls:this.state.flip%2?'swap-a':'swap-b',note:this.state.note,noteErr:this.state.noteErr,setNote:e=>this.setState({note:e.target.value,noteErr:false}),submit:e=>e.preventDefault(),approve:()=>this.act('approved'),reqChange:()=>this.act('changes'),log:[]};
   }
-
   render() {
     const v = this.viewModel();
     return <>

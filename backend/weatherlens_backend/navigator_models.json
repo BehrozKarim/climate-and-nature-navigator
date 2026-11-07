@@ -1,13 +1,22 @@
 {
-  "version": "navigator-reference-models-v1",
+  "version": "navigator-source-models-v2",
   "reference": {
-    "archive": "Navigator app (interactive)-html-v1.zip",
-    "sha256": "3185ab146009f8140e24097e840af7a1e3936b67be0be8aa996229fa57e52ff9",
-    "basis": "User-supplied interactive design reference; coefficients are illustrative assumptions"
+    "basis": "Provided synthetic challenge package; source figures and catalogue estimates remain distinct from analytical assumptions",
+    "sources": [
+      "data/05_scenarios/decarbonisation_levers.csv",
+      "data/05_scenarios/published_inventory_history.csv",
+      "docs/TASKS_AND_SCORING.md"
+    ],
+    "limitations": "Target rates, ramp interpretation and conservative overlap groups require expert review; this is not validated target compliance."
   },
-  "scenario": {"defaults": {"ssp126": "net_zero_2050", "ssp245": "ndcs", "ssp585": "current_policies"}},
+  "scenario": {
+    "defaults": {
+      "ssp126": "net_zero_2050",
+      "ssp245": "ndcs",
+      "ssp585": "current_policies"
+    }
+  },
   "pathway": {
-    "component": "Pathways.dc.html",
     "proxy_inventory_year": 2024,
     "assumed_base_year": 2025,
     "scope12_linear_rate": 0.042,
@@ -15,77 +24,308 @@
     "long_term_fraction": 0.1,
     "scope3_transition_year": 2035,
     "end_year": 2050,
-    "default_actions": ["L01", "L11", "L13", "L14", "L16", "L21", "L22"],
+    "default_actions": [
+      "L01",
+      "L11",
+      "L13",
+      "L14",
+      "L16",
+      "L21",
+      "L22"
+    ],
     "overlap_groups": [
-      {"id": "peat_land", "action_ids": ["L11", "L12"]},
-      {"id": "rapeseed_sourcing", "action_ids": ["L13", "L14", "L15"]},
-      {"id": "refrigeration", "action_ids": ["L03", "L04"]},
-      {"id": "freight_changes", "action_ids": ["L20", "L21"]}
+      {
+        "id": "peat_land",
+        "action_ids": [
+          "L11",
+          "L12"
+        ]
+      },
+      {
+        "id": "rapeseed_sourcing",
+        "action_ids": [
+          "L13",
+          "L14",
+          "L15"
+        ]
+      },
+      {
+        "id": "refrigeration",
+        "action_ids": [
+          "L03",
+          "L04"
+        ]
+      },
+      {
+        "id": "freight_changes",
+        "action_ids": [
+          "L20",
+          "L21"
+        ]
+      }
     ],
     "overlap_rule": "Maximum annual abatement within each named group; other overlaps remain unassessed"
   },
   "climate": {
-    "component": "Climate.dc.html",
-    "baseline_years": [1991, 2020],
-    "months": [5, 6, 7, 8],
-    "summer_months": [6, 7, 8],
-    "regions": {
-      "FI_SW": {"heat_response_per_c": 2.6, "drought_response_per_c": 0.5, "season_benefit_pct_per_c": 0.8},
-      "SE_SKANE": {"heat_response_per_c": 3.8, "drought_response_per_c": 0.9, "season_benefit_pct_per_c": 0.25}
-    },
+    "baseline_years": [
+      1991,
+      2020
+    ],
+    "months": [
+      5,
+      6,
+      7,
+      8
+    ],
+    "summer_months": [
+      6,
+      7,
+      8
+    ],
     "crops": {
-      "pea_fi": {"label": "Pea · south-west Finland", "region": "FI_SW", "price_item": "pea", "heat_sensitivity": 0.6, "drought_sensitivity": 2.4},
-      "pea_se": {"label": "Pea · Skåne", "region": "SE_SKANE", "price_item": "pea_SE", "heat_sensitivity": 0.6, "drought_sensitivity": 2.4},
-      "rape_fi": {"label": "Turnip rape · Finland", "region": "FI_SW", "price_item": "turnip_rape", "heat_sensitivity": 0.8, "drought_sensitivity": 1.2},
-      "potato_fi": {"label": "Potato · Finland", "region": "FI_SW", "price_item": "potato", "heat_sensitivity": 0.35, "drought_sensitivity": 2.0},
-      "carrot_fi": {"label": "Carrot · Finland", "region": "FI_SW", "price_item": "carrot", "heat_sensitivity": 0.3, "drought_sensitivity": 1.6}
+      "pea_fi": {
+        "label": "Pea · south-west Finland",
+        "region": "FI_SW",
+        "price_item": "pea"
+      },
+      "pea_se": {
+        "label": "Pea · Skåne",
+        "region": "SE_SKANE",
+        "price_item": "pea_SE"
+      },
+      "rape_fi": {
+        "label": "Turnip rape · Finland",
+        "region": "FI_SW",
+        "price_item": "turnip_rape"
+      },
+      "potato_fi": {
+        "label": "Potato · Finland",
+        "region": "FI_SW",
+        "price_item": "potato"
+      },
+      "carrot_fi": {
+        "label": "Carrot · Finland",
+        "region": "FI_SW",
+        "price_item": "carrot"
+      }
     }
   },
   "nature": {
-    "component": "Nature.dc.html",
-    "p_kg_per_ha": 0.85,
-    "n_kg_per_ha": 14.0,
-    "catch_crop_p_effect": 0.3,
-    "catch_crop_n_effect": 0.45,
-    "mineral_n_effect": 0.5,
-    "buffer_p_effect": 0.15,
-    "minimum_load_fraction": 0.2,
-    "state_weights": {"good": 1.0, "moderate": 1.2, "poor": 1.5, "bad": 1.8},
-    "area_basis": "Selected-year contract parcel area; excludes unrelated total catchment field area",
-    "normalization": "Unmitigated positive-area catchment medians, fixed across slider values"
+    "state_weights": {
+      "good": 1.0,
+      "moderate": 1.2,
+      "poor": 1.5,
+      "bad": 1.8
+    },
+    "priority_formula": "(P / median(P) + 0.5 * N / median(N)) * state_weight * p_sensitivity",
+    "source": "docs/TASKS_AND_SCORING.md, D1",
+    "attributed_loads": "Unavailable until an attributed-load model has been calibrated; monitored loads include other land and natural background."
   },
   "routing": {
-    "component": "Freight.dc.html",
     "road_great_circle_multiplier": 1.25,
     "sea_great_circle_multiplier": 1.15,
     "basis": "Illustrative great-circle uplifts and port choice; no verified road, maritime or ferry routing",
     "places": [
-      {"id": "helsinki", "name": "Helsinki", "lat": 60.17, "lon": 24.94, "group": "FI", "port": true, "aliases": []},
-      {"id": "turku", "name": "Turku", "lat": 60.45, "lon": 22.27, "group": "FI", "port": true, "aliases": []},
-      {"id": "naantali", "name": "Naantali port", "lat": 60.47, "lon": 22.03, "group": "FI", "port": true, "aliases": ["Naantali"]},
-      {"id": "tampere", "name": "Tampere", "lat": 61.5, "lon": 23.76, "group": "FI", "port": false, "aliases": []},
-      {"id": "oulu", "name": "Oulu", "lat": 65.01, "lon": 25.47, "group": "FI", "port": true, "aliases": []},
-      {"id": "sakyla", "name": "Säkylä plant", "lat": 61.0787, "lon": 22.2538, "group": "FI", "port": false, "aliases": ["Säkylä", "Sakyla"]},
-      {"id": "kantvik", "name": "Kantvik harbour", "lat": 60.084, "lon": 24.383, "group": "FI", "port": true, "aliases": ["Kantvik", "Kantvik mill"]},
-      {"id": "pudasjarvi", "name": "Pudasjärvi", "lat": 65.36, "lon": 26.99, "group": "FI", "port": false, "aliases": ["Pudasjarvi"]},
-      {"id": "riga", "name": "Port of Riga", "lat": 56.99, "lon": 24.07, "group": "BAL", "port": true, "aliases": ["Riga", "Riga port"]},
-      {"id": "tallinn", "name": "Tallinn", "lat": 59.44, "lon": 24.75, "group": "BAL", "port": true, "aliases": []},
-      {"id": "muuga", "name": "Port of Muuga", "lat": 59.5, "lon": 24.95, "group": "BAL", "port": true, "aliases": ["Muuga"]},
-      {"id": "tartu", "name": "Tartu", "lat": 58.38, "lon": 26.72, "group": "BAL", "port": false, "aliases": []},
-      {"id": "jelgava", "name": "Jelgava", "lat": 56.65, "lon": 23.71, "group": "BAL", "port": false, "aliases": []},
-      {"id": "klaipeda", "name": "Klaipėda", "lat": 55.71, "lon": 21.13, "group": "BAL", "port": true, "aliases": []},
-      {"id": "gdansk", "name": "Gdańsk", "lat": 54.6, "lon": 18.65, "group": "BAL", "port": true, "aliases": []},
-      {"id": "stockholm", "name": "Stockholm", "lat": 59.33, "lon": 18.07, "group": "SE", "port": true, "aliases": []},
-      {"id": "kapellskar", "name": "Kapellskär port", "lat": 59.72, "lon": 19.07, "group": "SE", "port": true, "aliases": ["Kapellskär"]},
-      {"id": "bjuv", "name": "Bjuv plant", "lat": 56.084, "lon": 12.92, "group": "SE", "port": false, "aliases": ["Bjuv"]},
-      {"id": "malmo", "name": "Malmö", "lat": 55.6, "lon": 13.0, "group": "SE", "port": true, "aliases": []},
-      {"id": "helsingborg", "name": "Helsingborg", "lat": 56.05, "lon": 12.69, "group": "SE", "port": true, "aliases": []}
+      {
+        "id": "helsinki",
+        "name": "Helsinki",
+        "lat": 60.17,
+        "lon": 24.94,
+        "group": "FI",
+        "port": true,
+        "aliases": []
+      },
+      {
+        "id": "turku",
+        "name": "Turku",
+        "lat": 60.45,
+        "lon": 22.27,
+        "group": "FI",
+        "port": true,
+        "aliases": []
+      },
+      {
+        "id": "naantali",
+        "name": "Naantali port",
+        "lat": 60.47,
+        "lon": 22.03,
+        "group": "FI",
+        "port": true,
+        "aliases": [
+          "Naantali"
+        ]
+      },
+      {
+        "id": "tampere",
+        "name": "Tampere",
+        "lat": 61.5,
+        "lon": 23.76,
+        "group": "FI",
+        "port": false,
+        "aliases": []
+      },
+      {
+        "id": "oulu",
+        "name": "Oulu",
+        "lat": 65.01,
+        "lon": 25.47,
+        "group": "FI",
+        "port": true,
+        "aliases": []
+      },
+      {
+        "id": "sakyla",
+        "name": "Säkylä plant",
+        "lat": 61.0787,
+        "lon": 22.2538,
+        "group": "FI",
+        "port": false,
+        "aliases": [
+          "Säkylä",
+          "Sakyla"
+        ]
+      },
+      {
+        "id": "kantvik",
+        "name": "Kantvik harbour",
+        "lat": 60.084,
+        "lon": 24.383,
+        "group": "FI",
+        "port": true,
+        "aliases": [
+          "Kantvik",
+          "Kantvik mill"
+        ]
+      },
+      {
+        "id": "pudasjarvi",
+        "name": "Pudasjärvi",
+        "lat": 65.36,
+        "lon": 26.99,
+        "group": "FI",
+        "port": false,
+        "aliases": [
+          "Pudasjarvi"
+        ]
+      },
+      {
+        "id": "riga",
+        "name": "Port of Riga",
+        "lat": 56.99,
+        "lon": 24.07,
+        "group": "BAL",
+        "port": true,
+        "aliases": [
+          "Riga",
+          "Riga port"
+        ]
+      },
+      {
+        "id": "tallinn",
+        "name": "Tallinn",
+        "lat": 59.44,
+        "lon": 24.75,
+        "group": "BAL",
+        "port": true,
+        "aliases": []
+      },
+      {
+        "id": "muuga",
+        "name": "Port of Muuga",
+        "lat": 59.5,
+        "lon": 24.95,
+        "group": "BAL",
+        "port": true,
+        "aliases": [
+          "Muuga"
+        ]
+      },
+      {
+        "id": "tartu",
+        "name": "Tartu",
+        "lat": 58.38,
+        "lon": 26.72,
+        "group": "BAL",
+        "port": false,
+        "aliases": []
+      },
+      {
+        "id": "jelgava",
+        "name": "Jelgava",
+        "lat": 56.65,
+        "lon": 23.71,
+        "group": "BAL",
+        "port": false,
+        "aliases": []
+      },
+      {
+        "id": "klaipeda",
+        "name": "Klaipėda",
+        "lat": 55.71,
+        "lon": 21.13,
+        "group": "BAL",
+        "port": true,
+        "aliases": []
+      },
+      {
+        "id": "gdansk",
+        "name": "Gdańsk",
+        "lat": 54.6,
+        "lon": 18.65,
+        "group": "BAL",
+        "port": true,
+        "aliases": []
+      },
+      {
+        "id": "stockholm",
+        "name": "Stockholm",
+        "lat": 59.33,
+        "lon": 18.07,
+        "group": "SE",
+        "port": true,
+        "aliases": []
+      },
+      {
+        "id": "kapellskar",
+        "name": "Kapellskär port",
+        "lat": 59.72,
+        "lon": 19.07,
+        "group": "SE",
+        "port": true,
+        "aliases": [
+          "Kapellskär"
+        ]
+      },
+      {
+        "id": "bjuv",
+        "name": "Bjuv plant",
+        "lat": 56.084,
+        "lon": 12.92,
+        "group": "SE",
+        "port": false,
+        "aliases": [
+          "Bjuv"
+        ]
+      },
+      {
+        "id": "malmo",
+        "name": "Malmö",
+        "lat": 55.6,
+        "lon": 13.0,
+        "group": "SE",
+        "port": true,
+        "aliases": []
+      },
+      {
+        "id": "helsingborg",
+        "name": "Helsingborg",
+        "lat": 56.05,
+        "lon": 12.69,
+        "group": "SE",
+        "port": true,
+        "aliases": []
+      }
     ],
-    "presets": [
-      {"id": "lv", "label": "Latvia → Kantvik", "mass_t": 2400, "material": "Rapeseed import · M103", "legs": [{"origin": "Supplier silo, Jelgava", "destination": "Port of Riga", "distance_km": 48, "mode": "truck", "points": [[56.65,23.71],[56.99,24.07]]}, {"origin": "Port of Riga", "destination": "Kantvik harbour", "distance_km": 372, "mode": "ship-bulk", "points": [[56.99,24.07],[57.6,23.75],[58.5,23.35],[59.3,23.3],[59.8,24.05],[60.084,24.383]]}]},
-      {"id": "ee", "label": "Estonia → Kantvik", "mass_t": 1800, "material": "Rapeseed import · M102", "legs": [{"origin": "Supplier silo, Tartu county", "destination": "Port of Muuga", "distance_km": 186, "mode": "truck", "points": [[58.38,26.72],[59.5,24.95]]}, {"origin": "Port of Muuga", "destination": "Kantvik harbour", "distance_km": 84, "mode": "ship-bulk", "points": [[59.5,24.95],[60.084,24.383]]}]},
-      {"id": "se", "label": "Bjuv → Säkylä", "mass_t": 22, "material": "Frozen peas · Bjuv", "legs": [{"origin": "Bjuv plant", "destination": "Kapellskär port", "distance_km": 694, "mode": "truck-reefer", "points": [[56.084,12.92],[59.72,19.07]]}, {"origin": "Kapellskär port", "destination": "Naantali port", "distance_km": 262, "mode": "ropax", "points": [[59.72,19.07],[60.47,22.03]]}, {"origin": "Naantali port", "destination": "Säkylä plant", "distance_km": 86, "mode": "truck-reefer", "points": [[60.47,22.03],[61.0787,22.2538]]}]},
-      {"id": "fi", "label": "Farm F0001 → Säkylä", "mass_t": 26, "material": "Contract peas · F0001", "legs": [{"origin": "Farm F0001", "destination": "Säkylä plant", "distance_km": 19, "mode": "truck", "points": [[61.009,22.536],[61.0787,22.2538]]}]}
-    ]
+    "presets": []
   }
 }

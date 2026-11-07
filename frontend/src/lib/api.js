@@ -46,6 +46,8 @@ export class NavigatorApi {
   }
   inventory(year = 2024, restated = false, options) { return this.calculate('inventory', { year, restated }, options); }
   preview(screen, inputs, options) { return this.calculate(`${screen}/preview`, inputs, options); }
+  geography({year=2025,includeParcels=false,...options}={}) { return this.datasetRequest(`geography?year=${year}&include_parcels=${includeParcels}`, options); }
+  freightBatch(inputs, options) { return this.calculate('freight/batch/preview', inputs, options); }
   save(screen, inputs) { return this.calculate(`${screen}/runs`, inputs); }
   freightCatalog(options) { return this.datasetRequest('freight/catalog', options); }
   lookup(origin, destination, options) { return this.calculate('freight/lookup', { origin, destination }, options); }
@@ -96,10 +98,8 @@ export class NavigatorApi {
 }
 
 export const api = new NavigatorApi();
-export function usesBackend(search = '') {
-  return new URLSearchParams(search).get('mode') !== 'reference';
-}
-export const backendMode = typeof window !== 'undefined' && usesBackend(window.location.search);
+export function usesBackend() { return true; }
+export const backendMode = true;
 
 /** Backend route coordinates are latitude/longitude; NavMap uses longitude/latitude. */
 export function routeToMap(leg) {
