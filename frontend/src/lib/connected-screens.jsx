@@ -5,6 +5,7 @@ import { api, sourceTrace } from './api.js';
 import ReceiptPanel from '../components/ReceiptPanel.jsx';
 import ReviewEvidence, {reviewTitle,reviewQueueLabel,reviewKind,reviewPresentation} from '../components/ReviewEvidence.jsx';
 import InventorySources from '../components/InventorySources.jsx';
+import {cachedResult,storeResult} from './result-cache.js';
 
 const fmt = n => n == null ? 'Unavailable' : Math.round(n).toLocaleString('fi-FI');
 const status = s => ({ blocked:['p-risk','Blocked'], draft:['p-draft','Draft'], approved_for_demo:['p-ok','Approved · demo'], published_source_context:['p-info','Published source'], changes_requested:['p-risk','Changes requested'] })[s] || ['p-rev','In review'];
@@ -18,9 +19,10 @@ function pending(component, body) {
 }
 
 export class ConnectedInventory extends Inventory {
-  componentDidMount() { this.load(); }
+  constructor(...args){super(...args);const data=cachedResult('inventory:2024:false');if(data)this.state={...this.state,remote:data,remoteKey:'2024|false',remoteLive:!!data._live};}
+  componentDidMount() { this._cacheChanged=()=>{this._apiKey=null;this._inventoryCache?.clear();this._inventoryContexts?.clear();this.setState({remoteLive:false});this.load();};window.addEventListener('navigator:dataset',this._cacheChanged);this.load(); }
   componentDidUpdate() { this.load(); }
-  componentWillUnmount() { this._dead = true; this._inventoryAbort?.abort(); }
+  componentWillUnmount() { this._dead = true; this._inventoryAbort?.abort();window.removeEventListener('navigator:dataset',this._cacheChanged); }
   async load() {
     const key = `${this.state.yr}|${this.state.rest}`;
     if (key === this._apiKey) return;
@@ -44,9 +46,10 @@ export class ConnectedInventory extends Inventory {
       const data = await api.inventory(year, restated, {signal:controller.signal});
       if (!this._dead && this._inventoryRequest === requestId) {
         if (data.selected?.year !== year) throw new Error('Inventory response does not match the requested year.');
+        data._live=true;storeResult(`inventory:${year}:${restated}`,data);
         this._inventoryCache.set(key, data);
         this._inventoryContexts.set(restated, data);
-        this.setState({ remote:data, remoteKey:key, apiError:'', apiLoading:false });
+        this.setState({ remote:data, remoteKey:key, apiError:'', apiLoading:false,remoteLive:true });
       }
     } catch(e) { if (!this._dead && this._inventoryRequest === requestId && e.name !== 'AbortError') this.setState({ apiError:e.message, apiLoading:false }); }
   }
@@ -98,7 +101,7 @@ export class ConnectedInventory extends Inventory {
       historyNote:history.length ? `t CO₂e · click a year${this.state.remoteKey?.endsWith('|true') ? ' · source-provided restatements where available' : ''}` : 'Published history unavailable in this snapshot.',
       scopeHistoryNote:history.length ? 'Source-reported Scope 1 and market-based Scope 2. Missing values are unavailable.' : 'Scope history unavailable in this snapshot.',
       sourcePanel:<InventorySources data={data} onTrace={this.props.onTrace} />,
-      issues:findings.map(f => ({type:f.id,what:f.message,key:f.source_refs.map(s => s.table + ':' + s.row_number).join(' · '),conf:0,confidenceLabel:'Rule check',open:f.resolution === 'open',closed:f.resolution !== 'open',ctxt:f.resolution,ccls:'p-info',bg:'#fff',op:1,accept:() => this.disposition(f,'confirm'),dismiss:() => this.disposition(f,'dismiss')})),
+      issues:findings.map(f => ({type:f.id,what:f.message,key:f.source_refs.map(s => s.table + ':' + s.row_number).join(' · '),conf:0,confidenceLabel:'Rule check',open:this.state.remoteLive && f.resolution === 'open',closed:this.state.remoteLive && f.resolution !== 'open',ctxt:f.resolution,ccls:'p-info',bg:'#fff',op:1,accept:() => this.disposition(f,'confirm'),dismiss:() => this.disposition(f,'dismiss')})),
       openCount:String(findings.filter(f => f.resolution === 'open').length),
       n:{pcf:supplierKnown ? fmt(suppliers.provides_pcf) : 'Unavailable'},supplierTotal:supplierKnown ? `of ${fmt(suppliers.total)}` : '',
       supplierAria:supplierKnown ? `${supplierValue} suppliers provide product carbon footprints. ${supplierNote}` : supplierNote,

@@ -1,1 +1,1 @@
-export { Pathways as default } from '../lib/LiveScreens.jsx';
+export { Pathways as default } from '../lib/RestoredScreens.jsx';

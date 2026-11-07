@@ -2,6 +2,14 @@
 from .freight import calculate_freight, purchase_coverage
 from .navigator_common import numeric, table_source, unique
 from statistics import quantiles
+from pathlib import Path
+import hashlib
+
+
+def calculation_version():
+    root = Path(__file__).parent
+    names = ['navigator_context.py', 'navigator_presentation.py', 'navigator_pathways.py', 'navigator_climate.py', 'navigator_nature.py', 'navigator_overview.py', 'navigator_routes.py', 'navigator_models.json', 'freight.py', 'analytics.py', 'schemas.py']
+    return hashlib.sha256(b''.join((root / name).read_bytes().replace(b'\r\n', b'\n') for name in names)).hexdigest()
 
 
 def geography(store, dataset_id, year=2025, include_parcels=False):

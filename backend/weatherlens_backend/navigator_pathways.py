@@ -94,6 +94,7 @@ class PathwayService:
         series = []
         for y in range(p['assumed_base_year'], p['end_year'] + 1):
             row = effects(selected, y)
+            row['annual_opex_delta_eur'] = sum(actions[i]['opex_delta_eur_per_yr'] * ramp(actions[i], y) for i in selected)
             row.update(year=y, target_tco2e=target(y), gap_tco2e=row['emissions_tco2e'] - target(y))
             series.append(row)
         current = next(r for r in series if r['year'] == year)

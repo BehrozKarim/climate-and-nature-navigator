@@ -283,7 +283,7 @@ export default class Main extends React.Component {
           </header>
           <main className={"content"} style={{"flex": "1", "padding": "22px 28px 64px"}}>
             {backendMode && <p role="status" style={{margin:'0 0 18px',fontSize:12,color:'var(--muted)'}}>
-              All screens use the supplied synthetic dataset through the backend. Source context, model assumptions and user-entered routes are labelled separately.
+              Supplied synthetic snapshot · cached calculations · sources available in each view.
             </p>}
             <div className={v.scrCls}>
               {v.isOverview ? <>

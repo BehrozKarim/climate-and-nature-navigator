@@ -1,3 +1,4 @@
+import {cacheInfo,setCacheContext} from './result-cache.js';
 /** Browser API client. Credentials, when needed, stay in memory. */
 export class ApiError extends Error {
   constructor(status, detail) {
@@ -8,10 +9,11 @@ export class ApiError extends Error {
 }
 
 export class NavigatorApi {
-  constructor({ base = '/v1', fetcher = (...args) => fetch(...args), token = '' } = {}) {
+  constructor({ base = '/v1', fetcher = (...args) => fetch(...args), token = '',initialDataset='' } = {}) {
     this.base = base.replace(/\/$/, '');
     this.fetcher = fetcher;
     this.token = token;
+    if(initialDataset)this.datasetPromise=Promise.resolve(initialDataset);
   }
 
   async request(path, { body, signal, method = body === undefined ? 'GET' : 'POST' } = {}) {
@@ -36,6 +38,15 @@ export class NavigatorApi {
       return selected;
     }).catch(error => { this.datasetPromise = null; throw error; });
     return this.datasetPromise;
+  }
+  async verifySnapshot() {
+    const {datasets}=await this.request('/datasets');
+    const id=datasets?.[0]?.dataset_id;
+    if(!id)throw new Error('No dataset imported. The bundled cache remains visible; import the supplied package to connect.');
+    const context=await this.request(`/navigator/datasets/${encodeURIComponent(id)}/cache-context`);
+    const previous=cacheInfo(),changed=previous.dataset_id!==id||previous.model_hash!==context.model_hash;
+    this.datasetPromise=Promise.resolve(id);setCacheContext(id,context.model_hash);
+    return {...context,changed};
   }
 
   async calculate(path, inputs = {}, options = {}) {
@@ -97,7 +108,7 @@ export class NavigatorApi {
   }
 }
 
-export const api = new NavigatorApi();
+export const api = new NavigatorApi({initialDataset:cacheInfo().dataset_id});
 export function usesBackend() { return true; }
 export const backendMode = true;
 
