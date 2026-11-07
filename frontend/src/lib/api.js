@@ -54,6 +54,13 @@ export class NavigatorApi {
   reviews() { return this.datasetRequest('reviews?limit=500'); }
   review(id, input) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/actions`, { body: input }); }
   reviewExport(id) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/export`); }
+  receipts(reviewId) { return this.datasetRequest(`reviews/${encodeURIComponent(reviewId)}/receipts`); }
+  prepareReceipt(reviewId, expected_version, wallet) { return this.datasetRequest(`reviews/${encodeURIComponent(reviewId)}/receipts`, { body: { expected_version, wallet } }); }
+  submitReceipt(id, signed_transaction) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/submit`, { body: { signed_transaction } }); }
+  retryReceipt(id) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/submit`, { body: {} }); }
+  confirmReceipt(id) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/confirm`, { body: {} }); }
+  receiptBundle(id) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/bundle`); }
+  verifyReceipt(id, bundle_json) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/verify`, { body: { bundle_json } }); }
   audit() { return this.datasetRequest('audit?limit=100'); }
   search(query, options) { return this.datasetRequest(`search?q=${encodeURIComponent(query)}&limit=20`, options); }
   disposition(finding, outcome, note) {

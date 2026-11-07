@@ -1,5 +1,7 @@
 # Navigator frontend
 
+For Solana receipts: save a Freight assessment for review, approve it with a note, then use **Sign evidence receipt** in Review with a Devnet-funded compatible wallet. See [setup and verification](../backend/docs/solana-receipts.md). Wallet keys stay in the wallet.
+
 React/Vite implementation of `Navigator app (interactive)-html-v3`. All seven screens use the reference's colors, fonts, spacing, SVG charts, map geometry, motion and controls. The app uses ordinary React components; it does not load the design tool's runtime or templates.
 
 ## Run

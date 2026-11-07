@@ -17,6 +17,8 @@ from .decisions import DecisionService, Conflict
 from .freight import calculate_freight, purchase_coverage
 from .storage import Store
 from .navigator_api import create_navigator_router
+from .solana_api import create_receipt_router
+from .solana_rpc import SolanaUnavailable
 from .voice import create_voice_router
 
 
@@ -60,6 +62,10 @@ def create_app(settings=None):
     @app.exception_handler(Conflict)
     async def conflict(request, exc):
         return JSONResponse(status_code=409, content={'error': 'version_or_state_conflict', 'detail': str(exc)})
+
+    @app.exception_handler(SolanaUnavailable)
+    async def solana_unavailable(request, exc):
+        return JSONResponse(status_code=502, content={'error': 'solana_unavailable', 'detail': str(exc)})
 
     @app.exception_handler(RequestValidationError)
     async def validation(request, exc):
@@ -187,6 +193,7 @@ def create_app(settings=None):
         return DecisionService(store()).export(decision_id, version)
 
     api.include_router(create_navigator_router(settings, store))
+    api.include_router(create_receipt_router(settings, store))
     api.include_router(create_voice_router(settings, store))
     app.include_router(api)
     return app

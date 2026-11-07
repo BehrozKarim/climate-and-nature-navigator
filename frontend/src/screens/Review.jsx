@@ -209,6 +209,7 @@ export default class Review extends React.Component {
                   </button>
                 </div>
               </form>
+              {this.receiptPanel?.()}
             </div>
             {v.d.approved ? <>
               <div aria-hidden={"true"} style={{"position": "absolute", "right": "26px", "top": "86px", "padding": "8px 18px", "border": "4px solid var(--spruce)", "borderRadius": "12px", "color": "var(--spruce)", "fontFamily": "var(--f-d)", "fontSize": "24px", "fontWeight": "700", "letterSpacing": ".1em", "background": "rgba(255,255,255,.85)", "animation": "stamp .6s var(--spring) both"}}>
