@@ -66,6 +66,24 @@ export class NavigatorApi {
   disposition(finding, outcome, note) {
     return this.datasetRequest(`findings/${encodeURIComponent(finding.id)}/disposition`, { body: { expected_version: finding.version, outcome, note } });
   }
+  voiceStatus(options) { return this.request('/navigator/voice/status', options); }
+  async audioRequest(path, { body, signal, contentType, audio = false } = {}) {
+    const response = await this.fetcher(this.base + path, {
+      method: 'POST', signal, body,
+      headers: { Accept: audio ? 'audio/mpeg' : 'application/json', ...(contentType ? {'Content-Type': contentType} : {}), ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}) },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new ApiError(response.status, error.detail || error.error || response.statusText);
+    }
+    return audio ? response.arrayBuffer() : response.json();
+  }
+  transcribe(recording, options) { return this.audioRequest('/navigator/voice/transcriptions', { ...options, body: recording, contentType: recording.type || 'audio/webm' }); }
+  speakReply(options) {
+    if (!this.conversation) throw new Error('Ask a question before reading a reply.');
+    const {id,version} = this.conversation;
+    return this.audioRequest(`/navigator/conversations/${encodeURIComponent(id)}/speech?expected_version=${version}`, { ...options, audio:true });
+  }
   async ask(question) {
     if (!this.conversation) this.conversation = await this.calculate('conversations');
     const updated = await this.request(`/navigator/conversations/${this.conversation.id}/messages`, {

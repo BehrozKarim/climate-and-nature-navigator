@@ -194,7 +194,8 @@ class ConversationService:
             raise Conflict('Conversation changed; reload before appending')
         if not isinstance(question, str) or not 1 <= len(question.strip()) <= 2000:
             raise ValueError('Question must have 1–2,000 characters')
-        response = answer(self.store, thread['dataset_id'], question.strip(), run_id, self.settings)
+        history = self.get(conversation_id, limit=6, offset=max(0, thread['message_count'] - 6))['messages']
+        response = answer(self.store, thread['dataset_id'], question.strip(), run_id, self.settings, history=history)
         stamp = now()
         with self.store.connect() as db:
             db.execute('BEGIN IMMEDIATE')

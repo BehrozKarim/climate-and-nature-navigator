@@ -19,6 +19,7 @@ from .storage import Store
 from .navigator_api import create_navigator_router
 from .solana_api import create_receipt_router
 from .solana_rpc import SolanaUnavailable
+from .voice import create_voice_router
 
 
 PageLimit = Annotated[int, Query(ge=1, le=500)]
@@ -193,5 +194,6 @@ def create_app(settings=None):
 
     api.include_router(create_navigator_router(settings, store))
     api.include_router(create_receipt_router(settings, store))
+    api.include_router(create_voice_router(settings, store))
     app.include_router(api)
     return app

@@ -14,7 +14,7 @@ npm ci
 npm run dev
 ```
 
-After starting the backend and importing a snapshot, open `http://127.0.0.1:5173/` for the connected emissions, freight route, review, search and Ask workflows. Configure Gemini in `backend/.env` and restart the backend for AI responses. The original offline design preview requires `?mode=reference`. Scenario screens and the annual freight comparison currently retain the design's sample data. See the frontend README for the integration status and checks.
+After starting the backend and importing a snapshot, open `http://127.0.0.1:5173/` for the connected emissions, freight route, review, search and Ask workflows. Configure Gemini in `backend/.env` and restart the backend for AI responses. The design preview requires `?mode=reference`; its Ask panel also uses the live backend. Scenario screens and the annual freight comparison currently retain the design's sample data. See the frontend README for the integration status and checks.
 
 Only `backend/` and `frontend/` contain tracked application files. The old `freight-ui/`, raw challenge data, design export and source-of-truth documents remain local and ignored; Git's root metadata and this README are retained.
 
