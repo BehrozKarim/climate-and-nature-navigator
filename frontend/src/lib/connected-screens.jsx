@@ -4,6 +4,7 @@ import Review from '../screens/Review.jsx';
 import { api, sourceTrace } from './api.js';
 import ReceiptPanel from '../components/ReceiptPanel.jsx';
 import ReviewEvidence, {reviewTitle,reviewQueueLabel,reviewKind,reviewPresentation} from '../components/ReviewEvidence.jsx';
+import InventorySources from '../components/InventorySources.jsx';
 
 const fmt = n => n == null ? 'Unavailable' : Math.round(n).toLocaleString('fi-FI');
 const status = s => ({ blocked:['p-risk','Blocked'], draft:['p-draft','Draft'], approved_for_demo:['p-ok','Approved · demo'], published_source_context:['p-info','Published source'], changes_requested:['p-risk','Changes requested'] })[s] || ['p-rev','In review'];
@@ -19,26 +20,45 @@ function pending(component, body) {
 export class ConnectedInventory extends Inventory {
   componentDidMount() { this.load(); }
   componentDidUpdate() { this.load(); }
-  componentWillUnmount() { this._dead = true; }
+  componentWillUnmount() { this._dead = true; this._inventoryAbort?.abort(); }
   async load() {
     const key = `${this.state.yr}|${this.state.rest}`;
     if (key === this._apiKey) return;
     this._apiKey = key;
     const requestId = this._inventoryRequest = (this._inventoryRequest || 0) + 1;
-    this.setState({ apiError:'' });
+    this._inventoryAbort?.abort();
+    this._inventoryCache ||= new Map();
+    this._inventoryContexts ||= new Map();
+    const context = this._inventoryContexts.get(this.state.rest);
+    const draftFinding = context?.quality_findings?.some(finding => finding.detail?.year === this.state.yr);
+    const historical = !draftFinding && context?.history?.find(row => row.year === this.state.yr);
+    const cached = this._inventoryCache.get(key) || (historical && {...context, selected:historical});
+    if (cached) {
+      this.setState({remote:cached, remoteKey:key, apiError:'', apiLoading:false});
+      return;
+    }
+    const year = this.state.yr, restated = this.state.rest;
+    const controller = this._inventoryAbort = new AbortController();
+    this.setState({ apiError:'', apiLoading:true });
     try {
-      const data = await api.inventory(this.state.yr, this.state.rest);
-      if (!this._dead && this._inventoryRequest === requestId) this.setState({ remote:data, remoteKey:key });
-    } catch(e) { if (!this._dead && this._inventoryRequest === requestId) this.setState({ apiError:e.message }); }
+      const data = await api.inventory(year, restated, {signal:controller.signal});
+      if (!this._dead && this._inventoryRequest === requestId) {
+        if (data.selected?.year !== year) throw new Error('Inventory response does not match the requested year.');
+        this._inventoryCache.set(key, data);
+        this._inventoryContexts.set(restated, data);
+        this.setState({ remote:data, remoteKey:key, apiError:'', apiLoading:false });
+      }
+    } catch(e) { if (!this._dead && this._inventoryRequest === requestId && e.name !== 'AbortError') this.setState({ apiError:e.message, apiLoading:false }); }
   }
   async disposition(finding, outcome) {
     if (this._writing) return;
     this._writing = true;
     try {
       await api.disposition(finding, outcome, `${outcome === 'confirm' ? 'Confirmed' : 'Dismissed'} by local demo analyst after source review.`);
+      this._inventoryCache?.clear(); this._inventoryContexts?.clear();
       this._apiKey = null; await this.load();
       this.props.onToast?.('Disposition saved. Source values and numerical blockers are unchanged.');
-    } catch(e) { this.props.onToast?.(e.message); this._apiKey = null; this.load(); }
+    } catch(e) { this.props.onToast?.(e.message); this._inventoryCache?.clear(); this._inventoryContexts?.clear(); this._apiKey = null; this.load(); }
     finally { this._writing = false; }
   }
   viewModel() {
@@ -59,7 +79,10 @@ export class ConnectedInventory extends Inventory {
     const sourceStep = source => ({ k:'Source', t:source.file || source.table || 'Dataset snapshot', id:[source.dataset_id, source.record_id, source.row_number == null ? null : `row ${source.row_number}`].filter(Boolean).join(' · '), d:source.file_sha256 || 'Source hash unavailable' });
     const notes = [...(data.limitations || []), ...(data.issues || []).map(issue => issue.message).filter(Boolean)];
     return {
-      years:(data.available_years || []).map(year => ({label:year === selected.year && !published && !unavailable ? `${year} draft` : String(year),on:String(year === this.state.yr),pick:() => this.setState({yr:year})})),
+      years:(data.available_years || []).map(year => ({label:history.some(row => row.year === year) ? String(year) : `${year} draft`,on:String(year === this.state.yr),pick:() => this.setState({yr:year})})),
+      syncStatus:<div className="inventory-sync" role="status" aria-atomic="true">
+        {this.state.apiError ? <><span>Couldn’t load {this.state.yr}{this.state.rest ? ' restated' : ''}. Still showing {selected.year} from the last loaded selection. {this.state.apiError}</span><button className="btn" onClick={() => {this._apiKey=null; this.load();}}>Retry</button></> : this.state.apiLoading ? `Loading ${this.state.yr}${this.state.rest ? ' restated' : ''}… Still showing ${selected.year} from the last loaded selection.` : `Showing ${selected.year}${selected.restatement_applied ? ' · source-provided restatement applied' : ' · source-reported values'}`}
+      </div>,
       restStr:String(this.state.rest), toggleRest:() => this.setState({rest:!this.state.rest}),
       restLabel:'Show source-provided restated values',
       isDraft:!published && !unavailable,
@@ -72,9 +95,9 @@ export class ConnectedInventory extends Inventory {
       }),
       hist:history.map(r => ({y:String(r.year),k:known(r.total_tco2e) ? `${Math.round(r.total_tco2e / 1000)}k` : 'Unavailable',h:percent(r.total_tco2e,totalMax),col:r.year === this.state.yr ? 'var(--spruce)' : '#C9D3D1',ink:'var(--muted)',outline:r.year === this.state.yr ? '2px solid var(--spruce)' : '0',aria:`${r.year}: ${fmt(r.total_tco2e)} tCO₂e${r.restatement_applied ? ', restated' : ''}`,pick:() => this.setState({yr:r.year})})),
       s12:history.map(r => ({y:String(r.year),a:percent(r.scopes?.scope1,scopeMax),b:percent(r.scopes?.scope2_market,scopeMax),t1:`Scope 1 ${r.year}: ${fmt(r.scopes?.scope1)} tCO₂e`,t2:`Scope 2 ${r.year}: ${fmt(r.scopes?.scope2_market)} tCO₂e`})),
-      historyNote:history.length ? `t CO₂e · click a year${this.state.rest ? ' · source-provided restatements where available' : ''}` : 'Published history unavailable in this snapshot.',
+      historyNote:history.length ? `t CO₂e · click a year${this.state.remoteKey?.endsWith('|true') ? ' · source-provided restatements where available' : ''}` : 'Published history unavailable in this snapshot.',
       scopeHistoryNote:history.length ? 'Source-reported Scope 1 and market-based Scope 2. Missing values are unavailable.' : 'Scope history unavailable in this snapshot.',
-      feeds:(data.feeds || []).map((f,i) => ({i,name:f.table,rows:fmt(f.row_count)+' rows',scope:'Source feed',dash:'0 113',col:'#5AA9F0',cls:'p-info',st:'Imported · needs review'})),
+      sourcePanel:<InventorySources data={data} onTrace={this.props.onTrace} />,
       issues:findings.map(f => ({type:f.id,what:f.message,key:f.source_refs.map(s => s.table + ':' + s.row_number).join(' · '),conf:0,confidenceLabel:'Rule check',open:f.resolution === 'open',closed:f.resolution !== 'open',ctxt:f.resolution,ccls:'p-info',bg:'#fff',op:1,accept:() => this.disposition(f,'confirm'),dismiss:() => this.disposition(f,'dismiss')})),
       openCount:String(findings.filter(f => f.resolution === 'open').length),
       n:{pcf:supplierKnown ? fmt(suppliers.provides_pcf) : 'Unavailable'},supplierTotal:supplierKnown ? `of ${fmt(suppliers.total)}` : '',
@@ -85,7 +108,7 @@ export class ConnectedInventory extends Inventory {
       trSup:() => this.props.onTrace?.({title:'Supplier climate data',value:supplierValue,unit:supplierKnown ? 'provide a product footprint' : '',status:supplierKnown ? 'source_context' : 'unavailable',note:[supplierNote,...notes].join('\n'),steps:[...(suppliers.source ? [sourceStep(suppliers.source)] : []),...(supplierKnown ? [{k:'Source',t:'Supplier master summary',id:`${supplierValue} · ${fmt(suppliers.country_count)} countries`,d:Object.entries(suppliers.sbti_status_counts || {}).map(([label,count]) => `${label}: ${count}`).join(' · ')}] : [])]})
     };
   }
-  render() { return !this.state.remote || this.state.remoteKey !== `${this.state.yr}|${this.state.rest}` || this.state.apiError ? pending(this) : super.render(); }
+  render() { return !this.state.remote ? pending(this) : super.render(); }
 }
 
 export class ConnectedReview extends Review {

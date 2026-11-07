@@ -41,6 +41,10 @@ Open `http://127.0.0.1:5173/#inventory` to use the connected workflows (`?mode=b
 
 The connected view labels its remaining sample content. Published source context is distinct from a local demo approval. No owner notification is sent. Routes are illustrative estimates. Backend review actions require a note and use the declared identity `Local demo analyst`; they do not grant production approval.
 
+Emissions year bars reuse the loaded snapshot history and keep the screen, chart nodes and keyboard focus in place. Restated responses and selected drafts are cached separately; uncached requests show a small status message and retain the explicitly labelled previous selection until they finish. Retry preserves the screen, superseded requests are cancelled, and saving a finding disposition clears cached responses.
+
+**Data sources** lists references used by this page: published inventory/history, draft checks, supplier coverage and boundary context. Each card shows its filename, full-file row count, purpose and import status. Inspect source resolves the referenced original rows and shows the snapshot hash; supplier coverage uses table-level provenance. These reported scope totals are not reconstructed from operational activity files. Imported status and a matching file hash do not establish that the underlying figures have been independently validated.
+
 Vite proxies `/v1` and `/health` to `http://127.0.0.1:8000`, so browser requests use the frontend origin. Set `NAVIGATOR_BACKEND_URL` before starting Vite to use another local service. For deployment, configure an equivalent reverse proxy. The optional API token belongs in an authenticated runtime integration; never bake a server token into a Vite build or commit credentials.
 
 ## What Review is for

@@ -90,6 +90,7 @@ export default class Inventory extends React.Component {
             </span>
           </div>
         </section>
+        {v.syncStatus}
         {v.isDraft ? <>
           <div className={"swap-a"} role={"alert"} style={{"display": "flex", "flexWrap": "wrap", "gap": "12px", "alignItems": "center", "padding": "14px 18px", "borderRadius": "16px", "background": "var(--clay-50)", "color": "var(--clay-ink)", "border": "1px solid #F3B49B"}}>
             <svg width={"20"} height={"20"} viewBox={"0 0 24 24"} fill={"none"} stroke={"currentColor"} strokeWidth={"2"} strokeLinecap={"round"} strokeLinejoin={"round"} aria-hidden={"true"}>
@@ -196,7 +197,7 @@ export default class Inventory extends React.Component {
             </span>
           </section>
         </div>
-        <section className={"card rise"} aria-label={"Data feeds"} style={{"--i": "5", "padding": "20px", "display": "flex", "flexDirection": "column", "gap": "14px"}}>
+        {v.sourcePanel || <section className={"card rise"} aria-label={"Data feeds"} style={{"--i": "5", "padding": "20px", "display": "flex", "flexDirection": "column", "gap": "14px"}}>
           <div style={{"display": "flex", "flexWrap": "wrap", "justifyContent": "space-between", "gap": "10px", "alignItems": "baseline"}}>
             <h2 className={"h-d"} style={{"fontSize": "19px", "fontWeight": "600"}}>
               {"Data sources"}
@@ -228,7 +229,7 @@ export default class Inventory extends React.Component {
               </div>
             </React.Fragment>)}
           </div>
-        </section>
+        </section>}
         <div style={{"display": "flex", "flexWrap": "wrap", "gap": "20px", "alignItems": "flex-start"}}>
           <section className={"card rise"} aria-label={"Data-quality findings"} style={{"--i": "6", "flex": "2 1 560px", "minWidth": "0", "padding": "20px", "display": "flex", "flexDirection": "column", "gap": "10px"}}>
             <div style={{"display": "flex", "flexWrap": "wrap", "justifyContent": "space-between", "gap": "10px", "alignItems": "baseline"}}>
