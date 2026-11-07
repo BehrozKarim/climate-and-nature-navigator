@@ -1,5 +1,7 @@
 # WeatherLens backend
 
+Solana Devnet analyst-signing receipts are available through Review. See the [receipt setup, API and demo guide](docs/solana-receipts.md). Install the updated requirements before starting; browser wallets retain all signing keys.
+
 A separately runnable Python/FastAPI backend using the challenge brief and synthetic package as source evidence. The challenge brief is the only required company-context document; the transcript and pain-point summary are not required for the snapshot. The frontend connects to this service with `?mode=backend`.
 
 The supplied **Navigator app (interactive)** ZIP now defines the feature contract: seven screens plus search, evidence, review and assistant threads. The [frontend API contract](docs/navigator-api-contract.md) maps every screen/control to requests and response fields. Use calculation previews for live controls and saved runs for evidence/review.

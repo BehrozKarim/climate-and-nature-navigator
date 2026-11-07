@@ -10,6 +10,7 @@
     "test": "node --test tests/*.test.mjs && node scripts/check-render.mjs"
   },
   "dependencies": {
+    "@wallet-standard/app": "1.1.1",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },

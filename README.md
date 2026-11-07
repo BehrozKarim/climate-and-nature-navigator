@@ -1,5 +1,7 @@
 # Climate and Nature Navigator
 
+The Review workflow now supports analyst-signed **Solana Devnet evidence receipts**. Save a Freight assessment, review it, sign its frozen evidence fingerprint with a browser wallet, and verify the exported bundle. See the [receipt guide](backend/docs/solana-receipts.md) for setup and the remaining live-wallet acceptance step.
+
 A Since AI 2026 hackathon project exploring how to assess climate and nature impacts across a food supply chain under different climate scenarios.
 
 ## Frontend

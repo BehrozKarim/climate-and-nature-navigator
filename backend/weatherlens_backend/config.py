@@ -28,3 +28,4 @@ class Settings:
     llm_base_url: str = field(default_factory=lambda: os.getenv('WEATHERLENS_LLM_BASE_URL', ''))
     llm_api_key: str = field(default_factory=lambda: os.getenv('WEATHERLENS_LLM_API_KEY', ''))
     llm_model: str = field(default_factory=lambda: os.getenv('WEATHERLENS_LLM_MODEL', ''))
+    solana_rpc_url: str = field(default_factory=lambda: os.getenv('WEATHERLENS_SOLANA_RPC_URL', 'https://api.devnet.solana.com'))

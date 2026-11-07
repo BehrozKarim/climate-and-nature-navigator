@@ -2,6 +2,7 @@ import React from 'react';
 import Inventory from '../screens/Inventory.jsx';
 import Review from '../screens/Review.jsx';
 import { api, sourceTrace } from './api.js';
+import ReceiptPanel from '../components/ReceiptPanel.jsx';
 
 const fmt = n => n == null ? 'Unavailable' : Math.round(n).toLocaleString('fi-FI');
 const status = s => ({ blocked:['p-risk','Blocked'], draft:['p-draft','Draft'], approved_for_demo:['p-ok','Approved · demo'], published_source_context:['p-info','Published source'], changes_requested:['p-risk','Changes requested'] })[s] || ['p-rev','In review'];
@@ -87,6 +88,17 @@ export class ConnectedInventory extends Inventory {
 }
 
 export class ConnectedReview extends Review {
+  matches(item, filter = this.state.filter) {
+    return filter === 'all' || (filter === 'waiting' ? ['draft','changes_requested'].includes(item.status) : filter === 'approved' ? ['approved_for_demo','published_source_context'].includes(item.status) : item.status === filter);
+  }
+  selectedItem() {
+    const items = (this.state.remote?.items || []).filter(item => this.matches(item));
+    return items.find(item => item.id === this.state.sel) || items[0];
+  }
+  receiptPanel() {
+    const selected = this.selectedItem();
+    return selected ? <ReceiptPanel key={`${selected.id}|${selected.version}`} review={selected} /> : null;
+  }
   componentDidMount() { this.load(); }
   componentWillUnmount() { this._dead = true; }
   async load() {
@@ -97,7 +109,7 @@ export class ConnectedReview extends Review {
     } catch(e) { if (!this._dead) this.setState({ apiError:e.message }); }
   }
   async act(kind) {
-    const item = this.state.remote?.items.find(i => i.id === this.state.sel);
+    const item = this.selectedItem();
     if (!item || this._writing) return;
     if (!this.state.note.trim()) { this.setState({noteErr:true}); return; }
     this._writing = true;
@@ -113,10 +125,9 @@ export class ConnectedReview extends Review {
     const v = super.viewModel(), remote = this.state.remote;
     if (!remote) return v;
     const items = remote.items;
-    const matches = (item,filter) => filter === 'all' || (filter === 'waiting' ? ['draft','changes_requested'].includes(item.status) : filter === 'approved' ? ['approved_for_demo','published_source_context'].includes(item.status) : item.status === filter);
-    const selected = items.find(i => i.id === this.state.sel) || items[0];
-    v.filters = v.filters.map((f,i) => ({...f,n:String(items.filter(item => matches(item,['all','waiting','blocked','approved'][i])).length)}));
-    v.queue = items.filter(item => matches(item,this.state.filter)).map(item => ({title:item.title,kind:item.target_type.replaceAll('_',' '),owner:item.owner,cls:status(item.status)[0],st:status(item.status)[1],sel:String(item.id === selected?.id),bg:item.id === selected?.id ? '#F6FBF8' : '#fff',bd:'var(--line)',dx:item.id === selected?.id ? 4 : 0,pick:() => this.setState({sel:item.id,note:'',noteErr:false}) }));
+    const selected = this.selectedItem();
+    v.filters = v.filters.map((f,i) => { const filter = ['all','waiting','blocked','approved'][i]; return {...f,n:String(items.filter(item => this.matches(item,filter)).length),pick:() => this.setState({filter,sel:null,note:'',noteErr:false})}; });
+    v.queue = items.filter(item => this.matches(item)).map(item => ({title:item.title,kind:item.target_type.replaceAll('_',' '),owner:item.owner,cls:status(item.status)[0],st:status(item.status)[1],sel:String(item.id === selected?.id),bg:item.id === selected?.id ? '#F6FBF8' : '#fff',bd:'var(--line)',dx:item.id === selected?.id ? 4 : 0,pick:() => this.setState({sel:item.id,note:'',noteErr:false}) }));
     v.empty = !v.queue.length;
     if (selected) v.d = {id:selected.id,ver:String(selected.version),title:selected.title,sum:selected.blocking_reasons.join(' ') || 'Source-linked assessment. Local demo review uses a declared, unverified analyst identity.',value:selected.status === 'blocked' ? 'Blocked' : 'Review',unit:selected.source_status || '',cls:status(selected.status)[0],st:status(selected.status)[1],approved:selected.status === 'approved_for_demo',nodes:selected.lineage.map((l,i) => ({k:l.kind,t:l.source?.file || l.method_version || 'Saved calculation',id:l.source ? `${l.source.table}:${l.source.row_number}` : l.run_id || '',i,bg:'var(--glacier-50)',ink:'var(--glacier-ink)',bd:'transparent',arrow:i < selected.lineage.length-1,delay:`${i*.1}s`})),assume:selected.assumptions,ai:'Source evidence and deterministic checks require human judgment. No owner notification is sent.',aiBg:'var(--glacier-50)',aiInk:'var(--glacier-ink)'};
     v.log = (this.state.remoteAudit?.events || []).map(e => ({when:new Date(e.created_at).toLocaleDateString(),what:e.event || e.outcome || 'Review event',who:e.actor || 'Declared local analyst',col:'#5AA9F0',anim:''}));
@@ -125,6 +136,10 @@ export class ConnectedReview extends Review {
   render() {
     if (!this.state.remote || this.state.apiError) return pending(this);
     if (!this.state.remote.items.length) return <section className="card" style={{padding:24}}>No review items in this snapshot.</section>;
+    if (!this.selectedItem()) return <section className="card" style={{padding:24,display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{this.viewModel().filters.map((filter,index) => <button type="button" key={index} className="chipbtn" aria-pressed={filter.on} onClick={filter.pick}>{filter.label} · {filter.n}</button>)}</div>
+      <p role="status">No review items match this filter.</p>
+    </section>;
     return super.render();
   }
 }
