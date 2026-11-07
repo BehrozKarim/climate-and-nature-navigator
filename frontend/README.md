@@ -58,7 +58,7 @@ Maps use source coordinates. Parcel dots are registered locations, not surveyed 
 
 ## Ask and voice
 
-Ask uses backend Gemini conversations and source-linked calculations. Neutral introductions are supported; coding/unrelated requests receive scope guidance. Configure Gemini and ElevenLabs in `backend/.env` using the backend instructions. Select **Talk to Navigator** to start turn-based microphone input and spoken replies; Interrupt and Stop voice remain available. Closing Ask or hiding the tab stops microphone capture/playback. Voice and typed chat share the same grounding and scope rules.
+Ask uses backend Gemini conversations and source-linked calculations. Neutral introductions are supported; coding/unrelated requests receive scope guidance. Configure Gemini and ElevenLabs in `backend/.env` using the backend instructions. Select **Talk to Navigator** to start turn-based microphone input and spoken replies; Interrupt and Stop voice remain available. Closing Ask or hiding the tab stops microphone capture/playback. Voice and typed chat share the same grounding and scope rules. Temporary provider failures are retried with backoff (up to three attempts, with a 60-second retry budget). A persistent failure is labelled AI unavailable, keeps retrieved evidence visible and offers Try again. HTTP 503 means temporary provider unavailability; key/permissions, invalid model and quota failures have separate guidance. The backend does not switch providers/models or fabricate an AI reply.
 
 ## Verification
 
