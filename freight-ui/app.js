@@ -1,13 +1,14 @@
 import '@fontsource-variable/manrope/wght.css';
 import {
   createElement, ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, ClipboardList, Download,
-  FileCheck2, FileText, Gauge, Package, Play, Search, Ship, Truck, X,
+  FileCheck2, FileText, Gauge, Package, Play, Pause, Plus, Search, Ship, Truck, X,
   Database, GitBranch, Sprout, Map, Sparkles, Send, LayoutDashboard,
 } from 'lucide';
 import { factors, issues, version, findLeg, freight, fuelComparison, estimateKg, issueId } from './freight.js';
 import { createStudio, tracks } from './studio.js';
+import { createJourney } from './journey.js';
 
-const icons = { ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, ClipboardList, Download, FileCheck2, FileText, Gauge, Package, Play, Search, Ship, Truck, X, Database, GitBranch, Sprout, Map, Sparkles, Send, LayoutDashboard };
+const icons = { ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, ClipboardList, Download, FileCheck2, FileText, Gauge, Package, Play, Pause, Plus, Search, Ship, Truck, X, Database, GitBranch, Sprout, Map, Sparkles, Send, LayoutDashboard };
 const icon = (name, size = 18) => createElement(icons[name], {
   width: size, height: size, 'stroke-width': 1.65, 'aria-hidden': 'true',
 }).outerHTML;
@@ -16,7 +17,7 @@ const esc = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({
 })[char]);
 const fmt = (value, digits = 0) => new Intl.NumberFormat('en-GB', { maximumFractionDigits: digits }).format(value);
 const tonnes = (kg) => fmt(kg / 1000, 2);
-const pages = { overview: 'Overview', checks: 'Data checks', 'inventory-preview': 'Inventory preview', inventory: 'Freight audit', fuel: 'Fuel test', pathways: 'Reduction pathways', risk: 'Crop & sourcing risk', nature: 'Nature hotspots', copilot: 'Evidence copilot' };
+const pages = { overview: 'Shipment studio', shipments: 'Shipment records', desk: 'Review queue', checks: 'Data checks', 'inventory-preview': 'Inventory preview', inventory: 'Freight audit', fuel: 'Fuel test', pathways: 'Reduction pathways', risk: 'Crop & sourcing risk', nature: 'Nature hotspots', copilot: 'Evidence copilot' };
 const sources = {
   shipments: ['Freight', 'Truck'],
   erp_purchase_lines: ['Purchasing', 'Package'],
@@ -96,6 +97,7 @@ const studio = createStudio({
   },
   reviewState: saved.answerReviews,
 });
+const journey = createJourney({ icon, esc, fmt, btn, saved, persist, render, announce });
 
 function issueRow(issue) {
   const [source, glyph] = sources[issue.table];
@@ -132,7 +134,7 @@ function checkRows() {
 
 function checks() {
   return head('Data checks', open().length + ' flags to review',
-    btn('Export A1 candidates', 'a1', 'Download')) +
+    btn('Export flags', 'a1', 'Download')) +
     '<div class="work-grid"><section class="surface work-table"><div class="filter-bar"><div class="filters" aria-label="Filter by source">' +
     [['all', 'All feeds'], ...Object.entries(sources).map(([key, [label]]) => [key, label])].map(([key, label]) =>
       '<button type="button" data-action="filter" data-value="' + key + '" aria-pressed="' + (filter === key) + '">' + label + '</button>').join('') +
@@ -143,7 +145,7 @@ function checks() {
     '<div class="queue-list" id="queue-results">' + checkRows() + '</div></section>' +
     '<aside class="surface intake"><span class="type-icon">' + icon('ClipboardList', 21) + '</span><h2>Open by feed</h2><p>Signals for expert review. A flag can point to a gap or a legitimate exception.</p><dl>' +
     Object.entries(sources).map(([key, [label]]) => '<div><dt>' + label + '</dt><dd>' + open().filter((issue) => issue.table === key).length + '</dd></div>').join('') +
-    '</dl><small>Scope and scoring are described in Tasks and scoring §A1.</small></aside></div>';
+    '</dl><small>Open a flag to inspect its rule and source.</small></aside></div>';
 }
 
 function inventory() {
@@ -199,18 +201,32 @@ function fuelPage() {
 }
 
 function render(focus = false) {
+  journey.cleanup();
   const current = page();
-  const dataViews = { checks: 'A1 · Data checks', 'inventory-preview': 'A2 · Inventory preview', inventory: 'Freight audit', fuel: 'Fuel sensitivity' };
+  const dataViews = { checks: 'Data checks', 'inventory-preview': 'Group estimate', inventory: 'Freight audit', fuel: 'Fuel sensitivity' };
   const active = dataViews[current] ? 'checks' : current;
-  const destinations = [{ page: 'overview', name: 'Overview', icon: 'LayoutDashboard' }, ...tracks];
-  nav.innerHTML = '<span class="rail-heading">Workspace</span>' + destinations.map(({ page: key, name, icon: glyph, code }) =>
+  const destinations = [
+    { page: 'overview', name: 'Shipment studio', icon: 'Truck' },
+    { page: 'shipments', name: 'Shipment records', icon: 'FileText' },
+    { page: 'desk', name: 'Review queue', icon: 'ClipboardList' },
+    ...tracks,
+  ];
+  nav.innerHTML = '<span class="rail-heading">Workspace</span>' + destinations.map(({ page: key, name, icon: glyph }) =>
     '<a href="#' + key + '"' + (active === key ? ' aria-current="page"' : '') + '>' +
-    icon(glyph, 17) + '<span>' + name + '</span>' + (code ? '<small>' + code + '</small>' : '') + '</a>').join('');
+    icon(glyph, 17) + '<span>' + name + '</span></a>').join('');
   document.querySelector('#studio-breadcrumb').textContent = pages[current];
-  const views = { ...studio, checks, 'inventory-preview': studio.inventoryPreview, inventory, fuel: fuelPage };
+  const views = { ...studio, overview: journey.view, shipments: journey.ledger, desk: studio.overview,
+    checks, 'inventory-preview': studio.inventoryPreview, inventory, fuel: fuelPage };
   const tabs = dataViews[current] ? '<div class="studio-tabs data-tabs">' + Object.entries(dataViews).map(([id, name]) =>
     '<a href="#' + id + '"' + (id === current ? ' aria-current="page"' : '') + '>' + name + '</a>').join('') + '</div>' : '';
   main.innerHTML = tabs + (flash ? '<div class="save-banner" role="status">' + icon('Check', 17) + esc(flash) + '</div>' : '') + views[current]();
+  if (current === 'overview') journey.mount();
+  if (current !== 'overview' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    main.querySelectorAll('.studio-plot > svg').forEach((chart) => chart.animate?.(
+      [{ opacity: .55, transform: 'translateY(4px)' }, { opacity: 1, transform: 'translateY(0)' }],
+      { duration: 240, easing: 'cubic-bezier(.2,.72,.2,1)' },
+    ));
+  }
   if (focus) main.focus({ preventScroll: true });
 }
 
@@ -360,6 +376,7 @@ document.addEventListener('click', (event) => {
   const control = event.target.closest('[data-action]');
   if (!control) return;
   const { action, value } = control.dataset;
+  if (journey.action(action, value)) return;
   if (studio.handle(action, value)) return;
   switch (action) {
     case 'item': issueDetails(issues.find((issue) => issueId(issue) === value)); break;
@@ -387,6 +404,7 @@ document.addEventListener('click', (event) => {
   }
 });
 document.addEventListener('change', (event) => {
+  if (journey.field(event.target)) return;
   if (studio.change(event.target)) return;
   if (event.target.id === 'status-filter') {
     statusFilter = event.target.value;
@@ -394,6 +412,7 @@ document.addEventListener('change', (event) => {
   }
 });
 document.addEventListener('input', (event) => {
+  if (journey.field(event.target)) return;
   const { id, value } = event.target;
   if (id === 'queue-search') {
     search = value;
@@ -440,7 +459,7 @@ drawer.addEventListener('close', () => {
 });
 window.addEventListener('hashchange', () => { flash = undefined; render(true); window.scrollTo(0, 0); });
 main.addEventListener('submit', (event) => {
-  if (studio.submit(event.target)) event.preventDefault();
+  if (journey.submit(event.target) || studio.submit(event.target)) event.preventDefault();
 });
 document.querySelector('.skip-link').addEventListener('click', (event) => { event.preventDefault(); main.focus(); });
 document.querySelector('#dataset-credit').textContent = sourceCredit + ' · v' + version;

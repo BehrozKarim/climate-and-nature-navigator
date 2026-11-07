@@ -121,7 +121,7 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
       ['Scope 2', 'Purchased electricity & heat', 280, 'Market-based example with certificates and supplier factors'],
       ['Scope 3', 'Value chain', 206400, 'Purchased goods, farm footprints, freight and downstream categories'],
     ];
-    return head('2025 emissions inventory', '', badge('A2 preview')) +
+    return head('2025 emissions inventory', '', badge('Simulated group estimate')) +
       '<div class="studio-two">' + panel('Group totals', 'Simulated figures', '<div class="studio-metrics">' +
       scopes.map(([name, detail, amount]) => metric(name, fmt(amount) + ' t', detail)).join('') + '</div><details class="compact-details"><summary>Scope and boundary</summary><div class="method-body">' +
       scopes.map(([name, , , detail]) => '<p><strong>' + name + '</strong> · ' + detail + '.</p>').join('') +
@@ -230,7 +230,7 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
       tabs('studio-risk-view', [['future', '2041–2060 climate risk'], ['season', '2027–2031 seasonal outlook']], riskView) +
       '<div class="studio-controls">' + options('studio-region', [['fi', 'Southwest Finland'], ['se', 'Southern Sweden']], region, 'Sourcing region') +
       options('studio-crop', [['pea', 'Peas'], ['potato', 'Potatoes'], ['carrot', 'Carrots']], crop, 'Crop') +
-      (seasonal ? '<div class="field-select"><span>Weather scenario</span><strong>SSP2–4.5 · fixed in C1</strong></div>'
+      (seasonal ? '<div class="field-select"><span>Weather scenario</span><strong>SSP2–4.5 · selected weather series</strong></div>'
         : options('studio-ssp', [['ssp126', 'SSP1–2.6 · lower warming'], ['ssp245', 'SSP2–4.5 · middle'], ['ssp585', 'SSP5–8.5 · higher warming']], ssp, 'Physical scenario')) + '</div>' +
       '<div class="studio-two">' + panel(seasonal ? 'Seasonal yield outlook' : 'Long-term yield risk', 'Illustrative forecast and 1991–2020 baseline',
         plot([{ name: 'Model preview', values: projected }, { name: 'Historical baseline', values: years.map(() => baseline) }], years, 't / ha')) +
@@ -239,7 +239,7 @@ export function createStudio({ icon, esc, fmt, btn, head, badge, show, render, p
           metric('Mean yield change', '−' + fmt(stress * 100, 1) + '%', 'Against the illustrated baseline') +
           metric('Poor harvest probability', fmt(bad * 100, 1) + '%', 'Yield below 80% of baseline')) +
         '</div><details class="compact-details"><summary>Model assumptions</summary><div class="method-body"><p>Simulated values. A real forecast would fit the historical yield and weather files and backtest by crop and region.</p></div></details>') + '</div>' +
-      (seasonal ? panel('Parcel-year forecast preview', 'Illustrative rows for the C1 submission workflow.', '<div class="studio-plot"><div class="chart-table"><table><thead><tr><th>Parcel</th>' +
+      (seasonal ? panel('Field forecast preview', 'Illustrative field-level yields', '<div class="studio-plot"><div class="chart-table"><table><thead><tr><th>Field</th>' +
         years.map((year) => '<th>' + year + ' · t/ha</th>').join('') + '</tr></thead><tbody>' +
         [1.02, .96, 1.04].map((offset, index) => '<tr><th>' + region.toUpperCase() + '-DEMO-' + (index + 1) + '</th>' +
           projected.map((value) => '<td>' + fmt(value * offset, 2) + '</td>').join('') + '</tr>').join('') +

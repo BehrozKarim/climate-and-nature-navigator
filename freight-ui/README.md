@@ -2,6 +2,28 @@
 
 Open **Apetit-Decision-Studio.html** in a browser. The standalone build bundles the data, type and interactive screens. Run `npm ci` and `npm run export` here to regenerate it. For development use `npm run dev`. For an HTTP-hosted static build use `npm run build`.
 
+## Requirements and source hierarchy
+
+The challenge brief `Apetit_x_SinceAI_2026_Challenge_Brief_EN_FINAL_2026-11-04.md` and `Transcript_AUDIO-2026-11-06_unverified.txt` define the product requirements. The automated transcript is unverified. `Apetit-Pain-Points.md` summarises those requirements. Interpret package methods, tasks, scoring and synthetic data as support for those needs.
+
+The main workflow addresses the described manual freight calculations and missing documentation. Broader pathway, farm-risk, nature and evidence screens support the future decisions requested in the brief. Package task codes are kept in this technical guide and export conventions.
+
+## Interactive shipment journey
+
+The home screen guides transport, load, distance, evidence and review. Each validated input moves the truck or vessel to the next stage. Missing calculation inputs show a pending value. Weight accepts tonnes and kilograms with conversion that preserves physical mass. The scene represents completion of the record.
+
+The Three.js orthographic scene renders texture planes for the landscape and vehicles, plus a shader water surface and a vessel wake. Camera and vehicle positions follow the form state. It renders while movement or the water effect is active, stops when the document is hidden, and snaps to current state when paused or reduced motion is requested. An equivalent image composition and all form controls remain available without WebGL.
+
+Calculations use tonnes × kilometres × the mode-specific synthetic 2025 factor. Recorded distance examples cite their source shipment. Estimated distances require an assumption. The scenery does not infer a route or provide a measured distance. Approval freezes the entered units, converted mass, distance, factor, source, reviewer and timestamp into a browser-local record. New intake records have their own ledger, separate from the package freight inventory.
+
+The arrival screen offers an illustrative alternative at the same tonne-kilometres. Carrier feasibility, pricing and route evidence need review before implementation.
+
+If browser storage fails, a persistent session-only notice remains through approval and ledger navigation. Downloading a reviewed record still works. The visual total counts up; a separate screen-reader status announces the settled result once.
+
+### Browser verification
+
+Checked the standalone file in real Chrome with WebGL enabled and disabled. The checks cover vehicle movement after valid inputs, truck and vessel calculations, kg/tonne conversion, incomplete inputs, estimated-distance assumptions, review and reload, reduced motion, 390px mobile layout, session-only storage failure and JSON download. The reference calculations are 24 t × 340 km × 0.092 = 750.72 kg CO₂e and 1,850 t × 305 km × 0.013 = 7,335.25 kg CO₂e. Production and standalone builds both pass.
+
 ## Challenge-track previews
 
 | Track | What to try | Data and limits |
@@ -12,7 +34,7 @@ Open **Apetit-Decision-Studio.html** in a browser. The standalone build bundles 
 | **D1 and D2** | Select a ranked catchment to see nutrient loads, water condition and the next investigation step. Open regional maps when location matters or screen an import origin. | Uses the six public development load rows, synthetic geometries and indicative origin table. Ranks and medians apply to the displayed subset. |
 | **E** | Ask about freight, FLAG, Foodhills, SBTN or ESRS, open the cited local source and record an expert review. | Curated local retrieval simulation with browser-local review. No model or service is contacted. |
 
-The Review desk starts with the highest-impact unresolved freight flag, its owner and the estimated coverage change. Source checks run on demand. Projections and framework answers are UI simulations with source and review controls. The sea-freight answer uses the current calculated shipment total and invalidates its review badge when the underlying total or coverage changes.
+The Review queue starts with the highest-impact unresolved freight flag, its owner and the estimated coverage change. Source checks run on demand. Projections and framework answers are UI simulations with source and review controls. The sea-freight answer uses the current calculated shipment total and invalidates its review badge when the underlying total or coverage changes.
 
 ## Reproduce the data
 
@@ -28,7 +50,7 @@ From this directory, run `python prepare_data.py --validate`. If the package was
 
 ## Review a freight flag
 
-1. Open the highest-impact freight flag on **Overview**. See the recorded road leg and comparable historical rows.
+1. Open the highest-impact freight flag on **Review queue**. See the recorded road leg and comparable historical rows.
 2. Choose **Review correction**. Add a verified distance and carrier reference or use the historical median as a clearly labelled estimate. The form previews how it changes the inventory.
 3. Record a reason and acknowledge the evidence before approving. The approved leg is added separately. It increases coverage, and its basis, factor, reviewer and timestamp are retained.
 4. In **Freight inventory**, select **Export leg audit** and **Export decisions** to reproduce the working estimate and inspect its source trail.
@@ -45,5 +67,7 @@ Reviews are simulated and stored in the current browser. Production use would re
 
 ## Visual treatment
 
-The workspace uses neutral paper and ink colours with blue for the primary action and selection. The default view highlights one task. D1 uses labelled horizontal bars and a selected catchment summary; methods and regional maps open on demand. Motion shows a running source check or a changed selection. Reduced-motion preferences suppress those transitions.
+The shipment workspace uses a coastal scene, generated truck and vessel cutouts, blue actions and a guided form. Other screens use labelled charts and progressive disclosure. Reduced-motion preferences preserve state and suppress transitions.
+
+The built-in ImageGen tool generated `assets/truck.webp`, `assets/vessel.webp` and `assets/coast.webp`. Each source was converted to WebP for the project. The truck and vessel prompts requested photorealistic right-facing side-profile cutouts with transparent backgrounds, navy vehicle bodies, no text or logos and no scenery. The coastal prompt requested a panoramic fictional Nordic coastline with a straight horizontal road at roughly two-thirds height and calm Baltic water in the lower quarter, without vehicles or UI.
 
