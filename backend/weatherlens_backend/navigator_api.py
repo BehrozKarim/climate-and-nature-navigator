@@ -8,7 +8,7 @@ from .navigator_context import NavigatorContext
 from .navigator_nature import NatureSensitivityService
 from .navigator_overview import overview
 from .navigator_pathways import PathwayService
-from .navigator_presentation import geography, freight_preview
+from .navigator_presentation import geography, freight_preview, calculation_version
 from .navigator_routes import RouteService
 from .navigator_workflows import ConversationService, ReviewService, page_bounds
 
@@ -43,6 +43,11 @@ def create_navigator_router(settings, store):
     @router.get('/datasets/{dataset_id}/geography')
     def map_context(dataset_id: str, year: int = 2025, include_parcels: bool = False):
         return geography(store(), dataset_id, year, include_parcels)
+
+    @router.get('/datasets/{dataset_id}/cache-context')
+    def cache_context(dataset_id: str):
+        store().dataset(dataset_id)
+        return {'dataset_id': dataset_id, 'model_hash': calculation_version()}
 
     @router.post('/prepare')
     def prepare(body: S.DatasetInput):

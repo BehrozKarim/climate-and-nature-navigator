@@ -1,28 +1,35 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {api} from '../lib/api.js';
+import {cachedResult,storeResult,subscribeCache,cacheInfo} from '../lib/result-cache.js';
 
 export const fmt = (value, digits=0) => typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString('en-GB',{maximumFractionDigits:digits}) : 'Unavailable';
 export const signed = (value, digits=1) => typeof value === 'number' && Number.isFinite(value) ? `${value>0?'+':''}${fmt(value,digits)}` : 'Unavailable';
 export const scenarioName = {ssp126:'SSP1-2.6',ssp245:'SSP2-4.5',ssp585:'SSP5-8.5'};
 const EMPTY=[];
 export function useResult(key, fetcher, delay=120) {
-  const [state,setState] = useState({});
+  const [revision,setRevision]=useState(cacheInfo().revision);
+  useEffect(()=>subscribeCache(()=>setRevision(cacheInfo().revision)),[]);
+  const scope=`${revision}:${key}`;
+  const cached=cachedResult(key);
+  const [state,setState] = useState(()=>({data:cached,scope}));
   const [retry,setRetry] = useState(0);
   useEffect(() => {
+    const value=cachedResult(key);
+    if(value&&retry===0){setState({data:value,scope});return;}
     const controller = new AbortController();
-    setState({loading:true,key});
+    setState(previous=>({...previous,loading:true,error:''}));
     const timer = setTimeout(() => {
       Promise.resolve().then(() => fetcher(controller.signal)).then(data => {
-        if (!controller.signal.aborted) setState({data,key});
-      }).catch(error => {if (!controller.signal.aborted) setState({error:error.message,key});});
+        if (!controller.signal.aborted && cacheInfo().revision===revision) {storeResult(key,data);setState({data,scope});}
+      }).catch(error => {if (!controller.signal.aborted) setState(previous=>({...previous,error:error.message,loading:false}));});
     },delay);
     return () => {clearTimeout(timer);controller.abort();};
-  },[key,retry]);
-  return {...(state.key===key?state:{loading:true}),retry:() => setRetry(n=>n+1)};
+  },[key,retry,revision]);
+  return {...state,data:cached||state.data,pending:!cached&&(state.scope!==scope||state.loading),retry:() => setRetry(n=>n+1)};
 }
 export function ResultState({result,children}) {
   if (!result.data) return <section className="card analysis-loading" aria-live="polite"><h2 className="h-d">{result.error?'Couldn’t load source data':'Calculating from the supplied dataset…'}</h2>{result.error&&<><p role="alert">{result.error}</p><button className="btn" onClick={result.retry}>Retry</button></>}</section>;
-  return children(result.data);
+  return <div className="result-shell"><div className="result-status" role="status" aria-live="polite">{result.error?<>{result.error} · previous result remains available. <button className="ev" onClick={result.retry}>Retry</button></>:result.pending?'Updating the selected inputs · previous result remains visible.':null}</div>{children(result.data)}</div>;
 }
 export function Metrics({items}) {
   return <div className="analysis-metrics">{items.map((item,index)=><article className="card" key={index}><span>{item.label}</span><strong className="num">{item.value}</strong><small>{item.note}</small></article>)}</div>;

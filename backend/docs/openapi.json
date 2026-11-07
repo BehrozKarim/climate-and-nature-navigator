@@ -1479,6 +1479,51 @@
         }
       }
     },
+    "/v1/navigator/datasets/{dataset_id}/cache-context": {
+      "get": {
+        "tags": [
+          "Navigator frontend contract"
+        ],
+        "summary": "Cache Context",
+        "operationId": "cache_context_v1_navigator_datasets__dataset_id__cache_context_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/navigator/prepare": {
       "post": {
         "tags": [

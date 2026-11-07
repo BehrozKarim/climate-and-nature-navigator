@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  build: {
+    rollupOptions: {output: {manualChunks(id) {if(id.endsWith('/data/initial-snapshot.json'))return 'source-snapshot';}}},
+  },
   server: {
     port: 5173,
     strictPort: true,
