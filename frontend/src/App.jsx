@@ -64,13 +64,6 @@ const T = {
 const Q = [
   { q: 'Which actions close the 2030 gap cheapest?' }, { q: 'How does high warming hit our peas?' }, { q: 'Why is the 2025 draft blocked?' }, { q: 'Where do freight emissions come from?' }
 ];
-const A = {
-  levers: { text: 'Cheapest per tonne: rail or full vessel loads for imported seed (L21, saves money), −15 °C frozen chain (L22), moving contract area off peat soils (L11, €11/t), pizza recipes (L16, €29/t) and rapeseed supplier footprints (L13, €32/t).\n\nTogether: about 27 800 t by 2030, close to the 31 100 t needed.', cites: [['Actions list', 'levers'], ['SBTi target', 'sbti']] },
-  climate: { text: 'The yield model links pea yields to hot days in summer and to the June–July water balance.\n\nUnder high warming, hot days rise sharply after 2040 and the 2046–2055 average pea yield falls in both regions. Irrigation softens the drought part of the loss.', cites: [['Yield model', 'clim']] },
-  draft: { text: 'All three 2025 lines are far off trend: Scope 3 is 300× the 2024 value. That points to a unit error in the source rows.\n\nThe Bjuv acquisition also means the base year must be recalculated.', cites: [['2025 draft', 'draft'], ['Bjuv acquisition', 'bjuv']] },
-  freight: { text: '2025: 2 339 legs, about 9 437 t. Trucks make up 79 %.\n\nHVO100 on dry trucks would cut about 3 140 t.', cites: [['Freight 2025', 'ship2025'], ['HVO100 (L20)', 'L20']] },
-  none: { text: 'Try asking about the 2030 gap, warming and peas, the 2025 draft or freight.', cites: [] }
-};
 
 export default class Main extends React.Component {
   constructor(...a) {
@@ -107,14 +100,6 @@ export default class Main extends React.Component {
     }
     const n = this.state.thread.length + ':' + (this.state.thread.length ? this.state.thread[this.state.thread.length - 1].shown : 0); if (n !== this._tn && this._thread) { this._tn = n; try { this._thread.scrollTop = this._thread.scrollHeight; } catch (e) {} } }
   toast(msg) { clearTimeout(this._tt); this.setState({ toast: msg }); this._tt = setTimeout(() => this.setState({ toast: '' }), 2600); }
-  answerFor(q) {
-    const s = (q || '').toLowerCase();
-    if (/action|lever|cost|gap|sbti|target|cheap/.test(s)) return A.levers;
-    if (/warm|pea|yield|climate|drought|heat/.test(s)) return A.climate;
-    if (/draft|2025|block|error/.test(s)) return A.draft;
-    if (/freight|truck|vessel|ship|route|transport/.test(s)) return A.freight;
-    return A.none;
-  }
   async askBackend(q) {
     if (this._asking) return;
     this._asking = true;
@@ -124,7 +109,7 @@ export default class Main extends React.Component {
       const messages = await api.ask(q);
       if (!this._dead) this.setState({ thread: messages.map(m => {
         const generated = m.generation_mode === 'ai_explanation_requires_review';
-        const label = generated ? `AI · ${m.provider_model || 'Navigator'} · requires review` : `Source response · ${m.provider_error || 'AI generation was not used.'}`;
+        const label = generated ? `AI · ${m.provider_model || 'Navigator'}${m.answer_scope === 'conversation_only' ? '' : ' · requires review'}` : m.generation_mode === 'guidance_not_ai' ? 'Navigator guidance' : `Source response · ${m.provider_error || 'AI generation was not used.'}`;
         const text = m.role === 'assistant' ? label + '\n\n' + m.text : m.text;
         return { role: m.role === 'assistant' ? 'ai' : 'user', text, shown:text.length,
           cites:(m.citations || []).map(c => [c.path, { title:c.path, value:c.source_kind === 'model' ? 'Model parameters' : c.line_start ? 'Lines ' + c.line_start + '–' + c.line_end : 'Source', unit:'', status:'draft', note:c.excerpt, steps:[{k:'Source',t:c.path,id:c.citation_id,d:c.file_sha256 || c.model?.config_sha256 || c.source?.file_sha256 || ''}] }]) };
@@ -134,12 +119,8 @@ export default class Main extends React.Component {
     } finally { this._asking = false; }
   }
   ask(q) {
-    if (backendMode) { const text = (q || '').trim(); if (text) this.askBackend(text); return; }
-    const text = (q || '').trim(); if (!text) return; const a = this.answerFor(text);
-    this.setState({ thread: this.state.thread.concat([{ role: 'user', text }, { role: 'ai', text: a.text, cites: a.cites, shown: 0 }]), askInput: '', ask: true, palette: false, trace: null });
-    cancelAnimationFrame(this._typeRaf);
-    const step = () => { const th = this.state.thread, last = th[th.length - 1]; if (!last || last.role !== 'ai' || last.shown >= last.text.length) return; const nt = th.slice(); nt[nt.length - 1] = Object.assign({}, last, { shown: Math.min(last.text.length, last.shown + 5) }); this.setState({ thread: nt }); this._typeRaf = requestAnimationFrame(step); };
-    this._typeRaf = requestAnimationFrame(step);
+    const text = (q || '').trim();
+    if (text) this.askBackend(text);
   }
   palGroups() {
     const s = this;
@@ -420,8 +401,9 @@ export default class Main extends React.Component {
                   {"Ask Navigator"}
                 </h2>
                 <p style={{"margin": "3px 0 0", "fontSize": "13px", "color": "var(--night-muted)"}}>
-                  {backendMode ? 'Live AI · answers link to sources and calculations.' : 'Design preview · predefined example answers.'}
+                  {backendMode ? 'Answers link to sources and calculations.' : 'Design sample data · chat uses the live backend.'}
                 </p>
+                {!backendMode && <a href="/" style={{fontSize:12,color:'var(--night-muted)'}}>Switch to live data</a>}
               </div>
               <button type={"button"} className={"mapbtn"} aria-label={"Close"} onClick={v.closeAsk}>
                 <svg width={"18"} height={"18"} viewBox={"0 0 24 24"} fill={"none"} stroke={"currentColor"} strokeWidth={"2"} strokeLinecap={"round"} aria-hidden={"true"}>

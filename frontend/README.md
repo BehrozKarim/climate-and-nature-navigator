@@ -10,7 +10,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/`. The default app uses the backend for its connected workflows and live AI chat. Start the backend first using its README. An explicit `?mode=reference` opens the original design preview with predefined demo answers and no backend dependency. The challenge brief remains a local, ignored input.
+Open `http://127.0.0.1:5173/`. The default app uses the backend for its connected workflows and live AI chat. Start the backend first using its README. An explicit `?mode=reference` opens the design preview with sample screen data. Ask always calls the backend, including in this preview; it has no canned chatbot. The challenge brief remains a local, ignored input.
 
 Use the rail to navigate, or link directly to `/#freight`, `/#inventory`, `/#pathways`, `/#climate`, `/#nature`, `/#review`. Ctrl/Cmd+K opens search; Escape closes drawers. Pathway start handles support arrow keys as well as dragging. Maps support pan, zoom, picking and layer controls.
 
@@ -34,7 +34,7 @@ Open `http://127.0.0.1:5173/#inventory` to use the connected workflows (`?mode=b
 | Freight | Live location catalogue, route lookup, debounced shipment/alternative previews, per-leg arithmetic, factor/source trace and coordinate handoff; annual shipment chart retains the v3 sample |
 | Review | Source-backed queue, filters, declared demo review with notes, version checks, blocked approval protection and persisted audit trail |
 | Search | Snapshot entity search and original row evidence |
-| Ask | Persistent Gemini/backend conversations, document citations, route/cargo context from the freight calculator, natural greetings and explicit provider-error feedback |
+| Ask | Persistent Gemini/backend conversations in both views, neutral introductions/capability replies, document citations, route/cargo context, explicit provider errors and redirects for coding/unrelated requests |
 | Overview, Pathways, Climate risk, Nature | Complete interactive v3 design screens; live scenario data adapters are still to be connected |
 
 The connected view labels its remaining sample content. Published source context is distinct from a local demo approval. No owner notification is sent. Routes are illustrative estimates. Backend review actions require a note and use the declared identity `Local demo analyst`; they do not grant production approval.
