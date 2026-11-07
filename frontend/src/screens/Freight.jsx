@@ -84,6 +84,20 @@ export default class Freight extends React.Component {
       if (!this._dead && !abort.signal.aborted) this.setState(st => ({looking:false,cLegs:legs,modes:legs.map(l => l.mode),cid:st.cid+1,flip:st.flip+1,leg:-1}));
     } catch(e) { if (!this._dead && e.name !== 'AbortError') this.setState({looking:false,err:e.message}); }
   }
+  async saveAssessment() {
+    const mass_t = this.state.mass, legs = this.legsNow().map(mapToRoute);
+    if (this._saving || !(mass_t > 0) || !legs.length) return;
+    this._saving = true;
+    this.setState({saving:true,saveError:''});
+    try {
+      await api.trip({mass_t,legs},true);
+      if (!this._dead) {
+        this.props.onToast?.('Assessment saved. Open Review, approve it with a note, then sign its evidence receipt.');
+        this.props.onNav?.('review');
+      }
+    } catch(e) { if (!this._dead) this.setState({saveError:e.message}); }
+    finally { this._saving=false; if (!this._dead) this.setState({saving:false}); }
+  }
   sync() {
     const st = this.state; const k1 = [st.preset, st.cid, st.mass, st.modes.join(), st.hvo].join('|');
     if (k1 !== this._k1) { this._k1 = k1; const legs = this.legsNow(), m = st.mass > 0 ? st.mass : 0, b = this.batch(st.hvo), b0 = this.batch(false); this.tween({ total: this.calc(legs, m).kg, batch: b.total, saved: b0.total - b.total }); }
@@ -211,6 +225,10 @@ export default class Freight extends React.Component {
               {this.state.catalogError && <div role="alert" style={{fontSize:13,color:'var(--ember-ink)'}}>{this.state.catalogError} <button type="button" className="btn" onClick={() => this.loadCatalog()}>Retry</button></div>}
             </> : null}
             {v.hasErr && <div role="alert" style={{fontSize:13,color:'var(--ember-ink)'}}>{v.err}</div>}
+            {backendMode && <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <button type="button" className="btn btn-p" disabled={!!this.state.saving || this.state.looking || !this.state.trip || !!this.state.tripError || v.massErr || !v.legs.length} onClick={() => this.saveAssessment()}>{this.state.saving ? 'Saving assessment…' : 'Save assessment for review'}</button>
+              {this.state.saveError && <p role="alert" style={{margin:0,fontSize:13,color:'var(--clay-ink)'}}>{this.state.saveError}</p>}
+            </div>}
             <div style={{"display": "grid", "gridTemplateColumns": "1fr 120px", "gap": "12px", "alignItems": "end"}}>
               <div>
                 <span className={"lbl"}>

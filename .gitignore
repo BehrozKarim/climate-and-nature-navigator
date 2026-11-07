@@ -6,6 +6,7 @@
 !/README.md
 
 **/node_modules/
+**/.vite/
 **/dist/
 **/.env
 **/.env.local

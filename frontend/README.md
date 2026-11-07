@@ -1,5 +1,7 @@
 # Navigator frontend
 
+For Solana receipts: save a Freight assessment for review, approve it with a note, then use **Sign evidence receipt** in Review with a Devnet-funded compatible wallet. See [setup and verification](../backend/docs/solana-receipts.md). Wallet keys stay in the wallet.
+
 React/Vite implementation of `Navigator app (interactive)-html-v3`. All seven screens use the reference's colors, fonts, spacing, SVG charts, map geometry, motion and controls. The app uses ordinary React components; it does not load the design tool's runtime or templates.
 
 ## Run
@@ -10,7 +12,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/`. This default **design preview** reproduces the supplied v3 sample values and interactions. It runs without the backend. The source brief, transcript and pain-point summary remain local, ignored inputs.
+Open `http://127.0.0.1:5173/`. The default app uses the backend for its connected workflows and live AI chat. Start the backend first using its README. An explicit `?mode=reference` opens the design preview with sample screen data. Ask always calls the backend, including in this preview; it has no canned chatbot. The challenge brief remains a local, ignored input.
 
 Use the rail to navigate, or link directly to `/#freight`, `/#inventory`, `/#pathways`, `/#climate`, `/#nature`, `/#review`. Ctrl/Cmd+K opens search; Escape closes drawers. Pathway start handles support arrow keys as well as dragging. Maps support pan, zoom, picking and layer controls.
 
@@ -26,20 +28,26 @@ Start the service using [the backend instructions](../backend/README.md), then i
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/v1/datasets/import -ContentType application/json -Body '{}'
 ```
 
-Open `http://127.0.0.1:5173/?mode=backend#inventory` to use the connected workflows. This explicit mode keeps design review reproducible while the remaining integrations are built. It selects the most recently imported immutable snapshot. Missing datasets and connection failures show an error and retry action; they do not silently substitute sample values.
+Open `http://127.0.0.1:5173/#inventory` to use the connected workflows (`?mode=backend` remains supported). It selects the most recently imported immutable snapshot. Missing datasets and connection failures show an error and retry action; they do not silently substitute sample values. Only `?mode=reference` opts into the offline design demo.
 
 | Workflow | Current connection |
 | --- | --- |
-| Emissions | Published/draft scope values, restatement selection, feed counts, supplier statistics, deterministic findings and persisted dispositions |
+| Emissions | Snapshot-backed scope values, both history charts, available years, restatements, feed counts, supplier counts/accessibility/evidence, deterministic findings and persisted dispositions; unavailable and partial supplier coverage are explicit |
 | Freight | Live location catalogue, route lookup, debounced shipment/alternative previews, per-leg arithmetic, factor/source trace and coordinate handoff; annual shipment chart retains the v3 sample |
 | Review | Source-backed queue, filters, declared demo review with notes, version checks, blocked approval protection and persisted audit trail |
 | Search | Snapshot entity search and original row evidence |
-| Ask | Persistent backend conversations, source citations, explicit extractive/AI response labels and error feedback |
+| Ask | Persistent Gemini/backend conversations in both views, ElevenLabs voice turns, neutral introductions/capability replies, document citations, route/cargo context, explicit provider errors and redirects for coding/unrelated requests |
 | Overview, Pathways, Climate risk, Nature | Complete interactive v3 design screens; live scenario data adapters are still to be connected |
 
 The connected view labels its remaining sample content. Published source context is distinct from a local demo approval. No owner notification is sent. Routes are illustrative estimates. Backend review actions require a note and use the declared identity `Local demo analyst`; they do not grant production approval.
 
 Vite proxies `/v1` and `/health` to `http://127.0.0.1:8000`, so browser requests use the frontend origin. Set `NAVIGATOR_BACKEND_URL` before starting Vite to use another local service. For deployment, configure an equivalent reverse proxy. The optional API token belongs in an authenticated runtime integration; never bake a server token into a Vite build or commit credentials.
+
+## Voice in Ask
+
+Configure ElevenLabs using the backend README, open Ask and select **Talk to Navigator**. After microphone permission, speak naturally and pause. Navigator displays your transcript, generates its normal grounded Gemini reply, speaks it with ElevenLabs and listens for the next turn. **Send now** submits a turn manually; **Interrupt** stops speech and listens again; **Stop voice** returns to typing. Closing Ask or hiding the tab ends microphone capture and playback. Audio starts only after the user chooses Talk.
+
+Voice uses browser MediaRecorder and Web Audio on HTTPS/localhost. Microphone tracks are muted during processing/playback to avoid transcribing Navigator's own reply. Unsupported browsers, denied permission and provider errors leave typed chat usable. Speech requests use the same in-memory API token as other backend calls; ElevenLabs/Gemini credentials stay on the server. Voice also works in reference mode, using the live backend conversation rather than the sample screen values.
 
 ## Checks
 

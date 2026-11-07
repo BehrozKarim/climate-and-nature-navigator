@@ -7,6 +7,12 @@ BASE = Path(__file__).resolve().parents[1]
 WORKSPACE = BASE.parent
 
 
+def load_environment(path=None):
+    """Load the local backend file at startup; explicit process settings take precedence."""
+    from dotenv import load_dotenv
+    load_dotenv(path or BASE / '.env', override=False)
+
+
 def default_dataset_root() -> Path:
     packages = list((WORKSPACE / 'Apetit_SinceAI2026 _1_').glob('**/START_HERE.md'))
     return packages[0].parent if len(packages) == 1 else WORKSPACE / 'dataset'
@@ -22,3 +28,8 @@ class Settings:
     llm_base_url: str = field(default_factory=lambda: os.getenv('WEATHERLENS_LLM_BASE_URL', ''))
     llm_api_key: str = field(default_factory=lambda: os.getenv('WEATHERLENS_LLM_API_KEY', ''))
     llm_model: str = field(default_factory=lambda: os.getenv('WEATHERLENS_LLM_MODEL', ''))
+    solana_rpc_url: str = field(default_factory=lambda: os.getenv('WEATHERLENS_SOLANA_RPC_URL', 'https://api.devnet.solana.com'))
+    elevenlabs_api_key: str = field(default_factory=lambda: os.getenv('ELEVENLABS_API_KEY', ''))
+    elevenlabs_voice_id: str = field(default_factory=lambda: os.getenv('ELEVENLABS_VOICE_ID', 'JBFqnCBsd6RMkjVDRZzb'))
+    elevenlabs_stt_model: str = field(default_factory=lambda: os.getenv('ELEVENLABS_STT_MODEL', 'scribe_v2'))
+    elevenlabs_tts_model: str = field(default_factory=lambda: os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_flash_v2_5'))

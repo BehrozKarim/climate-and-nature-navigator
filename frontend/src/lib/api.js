@@ -54,10 +54,35 @@ export class NavigatorApi {
   reviews() { return this.datasetRequest('reviews?limit=500'); }
   review(id, input) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/actions`, { body: input }); }
   reviewExport(id) { return this.datasetRequest(`reviews/${encodeURIComponent(id)}/export`); }
+  receipts(reviewId) { return this.datasetRequest(`reviews/${encodeURIComponent(reviewId)}/receipts`); }
+  prepareReceipt(reviewId, expected_version, wallet) { return this.datasetRequest(`reviews/${encodeURIComponent(reviewId)}/receipts`, { body: { expected_version, wallet } }); }
+  submitReceipt(id, signed_transaction) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/submit`, { body: { signed_transaction } }); }
+  retryReceipt(id) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/submit`, { body: {} }); }
+  confirmReceipt(id) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/confirm`, { body: {} }); }
+  receiptBundle(id) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/bundle`); }
+  verifyReceipt(id, bundle_json) { return this.datasetRequest(`receipts/${encodeURIComponent(id)}/verify`, { body: { bundle_json } }); }
   audit() { return this.datasetRequest('audit?limit=100'); }
   search(query, options) { return this.datasetRequest(`search?q=${encodeURIComponent(query)}&limit=20`, options); }
   disposition(finding, outcome, note) {
     return this.datasetRequest(`findings/${encodeURIComponent(finding.id)}/disposition`, { body: { expected_version: finding.version, outcome, note } });
+  }
+  voiceStatus(options) { return this.request('/navigator/voice/status', options); }
+  async audioRequest(path, { body, signal, contentType, audio = false } = {}) {
+    const response = await this.fetcher(this.base + path, {
+      method: 'POST', signal, body,
+      headers: { Accept: audio ? 'audio/mpeg' : 'application/json', ...(contentType ? {'Content-Type': contentType} : {}), ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}) },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new ApiError(response.status, error.detail || error.error || response.statusText);
+    }
+    return audio ? response.arrayBuffer() : response.json();
+  }
+  transcribe(recording, options) { return this.audioRequest('/navigator/voice/transcriptions', { ...options, body: recording, contentType: recording.type || 'audio/webm' }); }
+  speakReply(options) {
+    if (!this.conversation) throw new Error('Ask a question before reading a reply.');
+    const {id,version} = this.conversation;
+    return this.audioRequest(`/navigator/conversations/${encodeURIComponent(id)}/speech?expected_version=${version}`, { ...options, audio:true });
   }
   async ask(question) {
     if (!this.conversation) this.conversation = await this.calculate('conversations');
@@ -70,7 +95,10 @@ export class NavigatorApi {
 }
 
 export const api = new NavigatorApi();
-export const backendMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'backend';
+export function usesBackend(search = '') {
+  return new URLSearchParams(search).get('mode') !== 'reference';
+}
+export const backendMode = typeof window !== 'undefined' && usesBackend(window.location.search);
 
 /** Backend route coordinates are latitude/longitude; NavMap uses longitude/latitude. */
 export function routeToMap(leg) {

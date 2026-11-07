@@ -2,6 +2,7 @@ import React from 'react';
 import { api, backendMode, sourceTrace } from './lib/api.js';
 import { installNavigation, syncDialogFocus } from './lib/interactions.js';
 import { ConnectedInventory, ConnectedReview } from './lib/connected-screens.jsx';
+import VoiceChat from './lib/VoiceChat.jsx';
 import Overview from './screens/Overview.jsx';
 import Inventory from './screens/Inventory.jsx';
 import Freight from './screens/Freight.jsx';
@@ -64,13 +65,6 @@ const T = {
 const Q = [
   { q: 'Which actions close the 2030 gap cheapest?' }, { q: 'How does high warming hit our peas?' }, { q: 'Why is the 2025 draft blocked?' }, { q: 'Where do freight emissions come from?' }
 ];
-const A = {
-  levers: { text: 'Cheapest per tonne: rail or full vessel loads for imported seed (L21, saves money), −15 °C frozen chain (L22), moving contract area off peat soils (L11, €11/t), pizza recipes (L16, €29/t) and rapeseed supplier footprints (L13, €32/t).\n\nTogether: about 27 800 t by 2030, close to the 31 100 t needed.', cites: [['Actions list', 'levers'], ['SBTi target', 'sbti']] },
-  climate: { text: 'The yield model links pea yields to hot days in summer and to the June–July water balance.\n\nUnder high warming, hot days rise sharply after 2040 and the 2046–2055 average pea yield falls in both regions. Irrigation softens the drought part of the loss.', cites: [['Yield model', 'clim']] },
-  draft: { text: 'All three 2025 lines are far off trend: Scope 3 is 300× the 2024 value. That points to a unit error in the source rows.\n\nThe Bjuv acquisition also means the base year must be recalculated.', cites: [['2025 draft', 'draft'], ['Bjuv acquisition', 'bjuv']] },
-  freight: { text: '2025: 2 339 legs, about 9 437 t. Trucks make up 79 %.\n\nHVO100 on dry trucks would cut about 3 140 t.', cites: [['Freight 2025', 'ship2025'], ['HVO100 (L20)', 'L20']] },
-  none: { text: 'Try asking about the 2030 gap, warming and peas, the 2025 draft or freight.', cites: [] }
-};
 
 export default class Main extends React.Component {
   constructor(...a) {
@@ -107,37 +101,29 @@ export default class Main extends React.Component {
     }
     const n = this.state.thread.length + ':' + (this.state.thread.length ? this.state.thread[this.state.thread.length - 1].shown : 0); if (n !== this._tn && this._thread) { this._tn = n; try { this._thread.scrollTop = this._thread.scrollHeight; } catch (e) {} } }
   toast(msg) { clearTimeout(this._tt); this.setState({ toast: msg }); this._tt = setTimeout(() => this.setState({ toast: '' }), 2600); }
-  answerFor(q) {
-    const s = (q || '').toLowerCase();
-    if (/action|lever|cost|gap|sbti|target|cheap/.test(s)) return A.levers;
-    if (/warm|pea|yield|climate|drought|heat/.test(s)) return A.climate;
-    if (/draft|2025|block|error/.test(s)) return A.draft;
-    if (/freight|truck|vessel|ship|route|transport/.test(s)) return A.freight;
-    return A.none;
-  }
   async askBackend(q) {
     if (this._asking) return;
     this._asking = true;
     const pending = { role: 'ai', text: 'Retrieving sources…', shown: 100, cites: [] };
-    this.setState(st => ({ thread: [...st.thread, { role:'user', text:q }, pending], askInput:'', ask:true, palette:false, trace:null }));
+    this.setState(st => ({ thread: [...st.thread, { role:'user', text:q }, pending], askInput:'', ask:true, asking:true, palette:false, trace:null }));
     try {
       const messages = await api.ask(q);
       if (!this._dead) this.setState({ thread: messages.map(m => {
-        const text = m.role === 'assistant' ? (m.generation_mode === 'extractive_not_ai' ? 'Source excerpts (not AI-generated)\n\n' : 'AI explanation · requires review\n\n') + m.text : m.text;
+        const generated = m.generation_mode === 'ai_explanation_requires_review';
+        const label = generated ? `AI · ${m.provider_model || 'Navigator'}${m.answer_scope === 'conversation_only' ? '' : ' · requires review'}` : m.generation_mode === 'guidance_not_ai' ? 'Navigator guidance' : `Source response · ${m.provider_error || 'AI generation was not used.'}`;
+        const text = m.role === 'assistant' ? label + '\n\n' + m.text : m.text;
         return { role: m.role === 'assistant' ? 'ai' : 'user', text, shown:text.length,
-          cites:(m.citations || []).map(c => [c.path, { title:c.path, value:'Lines ' + c.line_start + '–' + c.line_end, unit:'', status:'draft', note:c.excerpt, steps:[{k:'Source',t:c.path,id:c.citation_id,d:c.file_sha256}] }]) };
+          cites:(m.citations || []).map(c => [c.path, { title:c.path, value:c.source_kind === 'model' ? 'Model parameters' : c.line_start ? 'Lines ' + c.line_start + '–' + c.line_end : 'Source', unit:'', status:'draft', note:c.excerpt, steps:[{k:'Source',t:c.path,id:c.citation_id,d:c.file_sha256 || c.model?.config_sha256 || c.source?.file_sha256 || ''}] }]) };
       }) });
+      return messages.filter(message => message.role === 'assistant').at(-1);
     } catch(e) {
       if (!this._dead) this.setState(st => ({ thread: st.thread.map(m => m === pending ? { ...m, text:e.message, shown:e.message.length } : m) }));
-    } finally { this._asking = false; }
+      throw e;
+    } finally { this._asking = false; if (!this._dead) this.setState({asking:false}); }
   }
   ask(q) {
-    if (backendMode) { const text = (q || '').trim(); if (text) this.askBackend(text); return; }
-    const text = (q || '').trim(); if (!text) return; const a = this.answerFor(text);
-    this.setState({ thread: this.state.thread.concat([{ role: 'user', text }, { role: 'ai', text: a.text, cites: a.cites, shown: 0 }]), askInput: '', ask: true, palette: false, trace: null });
-    cancelAnimationFrame(this._typeRaf);
-    const step = () => { const th = this.state.thread, last = th[th.length - 1]; if (!last || last.role !== 'ai' || last.shown >= last.text.length) return; const nt = th.slice(); nt[nt.length - 1] = Object.assign({}, last, { shown: Math.min(last.text.length, last.shown + 5) }); this.setState({ thread: nt }); this._typeRaf = requestAnimationFrame(step); };
-    this._typeRaf = requestAnimationFrame(step);
+    const text = (q || '').trim();
+    if (text && !this.state.voiceActive) this.askBackend(text).catch(() => {});
   }
   palGroups() {
     const s = this;
@@ -166,7 +152,7 @@ export default class Main extends React.Component {
     const asked = st.thread.filter((m) => m.role === 'user').map((m) => m.text);
     const suggest = Q.map((x) => ({ q: x.q, go: () => this.ask(x.q) })); const suggestRest = suggest.filter((x) => asked.indexOf(x.q) < 0); const lastAi = st.thread[st.thread.length - 1];
     const tr = st.trace || { title: '', value: '', unit: '', steps: [] };
-    const trMap = { approved: ['p-ok', 'Approved'], review: ['p-rev', 'In review'], draft: ['p-draft', 'Draft'], blocked: ['p-risk', 'Blocked'], changes: ['p-risk', 'Changes requested'] }; const trm = trMap[st.trStatus] || trMap.review;
+    const trMap = { approved: ['p-ok', 'Approved'], review: ['p-rev', 'In review'], draft: ['p-draft', 'Draft'], blocked: ['p-risk', 'Blocked'], changes: ['p-risk', 'Changes requested'], published_source_context: ['p-info', 'Published source'], source_context: ['p-info', 'Source context'], preliminary: ['p-draft', 'Preliminary'], unavailable: ['p-info', 'Unavailable'] }; const trm = trMap[st.trStatus] || trMap.review;
     const stCol = { Source: '#1B5E96', Factor: '#6B4A00', Calculation: '#0D6A3C', Check: '#A43A14' };
     const keys = ['ssp126', 'ssp245', 'ssp585'];
     return {
@@ -418,8 +404,9 @@ export default class Main extends React.Component {
                   {"Ask Navigator"}
                 </h2>
                 <p style={{"margin": "3px 0 0", "fontSize": "13px", "color": "var(--night-muted)"}}>
-                  {"Answers link to their sources."}
+                  {backendMode ? 'Answers link to sources and calculations.' : 'Design sample data · chat uses the live backend.'}
                 </p>
+                {!backendMode && <a href="/" style={{fontSize:12,color:'var(--night-muted)'}}>Switch to live data</a>}
               </div>
               <button type={"button"} className={"mapbtn"} aria-label={"Close"} onClick={v.closeAsk}>
                 <svg width={"18"} height={"18"} viewBox={"0 0 24 24"} fill={"none"} stroke={"currentColor"} strokeWidth={"2"} strokeLinecap={"round"} aria-hidden={"true"}>
@@ -432,7 +419,7 @@ export default class Main extends React.Component {
               {v.threadEmpty ? <>
                 <div className={"rise"} style={{"display": "flex", "flexDirection": "column", "gap": "8px"}}>
                   {(v.suggest || []).map((sg, index0) => <React.Fragment key={index0}>
-                    <button type={"button"} className={"card lift"} onClick={sg.go} style={{"display": "flex", "alignItems": "center", "gap": "12px", "padding": "14px 16px", "textAlign": "left", "fontSize": "14px", "fontWeight": "600", "color": "var(--ink)"}}>
+                    <button type={"button"} className={"card lift"} onClick={sg.go} disabled={this.state.voiceActive || this.state.asking} style={{"display": "flex", "alignItems": "center", "gap": "12px", "padding": "14px 16px", "textAlign": "left", "fontSize": "14px", "fontWeight": "600", "color": "var(--ink)"}}>
                       <span style={{"flex": "1"}}>
                         {sg.q}
                       </span>
@@ -476,19 +463,20 @@ export default class Main extends React.Component {
               {v.showMore ? <>
                 <div style={{"display": "flex", "flexWrap": "wrap", "gap": "8px"}}>
                   {(v.suggestRest || []).map((sg, index0) => <React.Fragment key={index0}>
-                    <button type={"button"} className={"chipbtn"} onClick={sg.go} style={{"fontSize": "12.5px"}}>
+                    <button type={"button"} className={"chipbtn"} onClick={sg.go} disabled={this.state.voiceActive || this.state.asking} style={{"fontSize": "12.5px"}}>
                       {sg.q}
                     </button>
                   </React.Fragment>)}
                 </div>
               </> : null}
             </div>
+            <VoiceChat onQuestion={question => this.askBackend(question)} onActive={active => { if (!this._dead) this.setState({voiceActive:active}); }} disabled={this.state.asking}/>
             <form onSubmit={v.submitAsk} style={{"display": "flex", "gap": "8px", "padding": "14px 16px 16px", "borderTop": "1px solid var(--line)"}}>
               <label htmlFor={"askq"} className={"sr"}>
                 {"Your question"}
               </label>
-              <input id={"askq"} className={"field"} value={v.askInput} onChange={v.onAskInput} autoComplete={"off"} placeholder={"Ask a question"} />
-              <button type={"submit"} className={"btn btn-p"} aria-label={"Send"} style={{"width": "48px", "padding": "0", "flex": "none"}}>
+              <input id={"askq"} className={"field"} value={v.askInput} onChange={v.onAskInput} disabled={this.state.voiceActive || this.state.asking} autoComplete={"off"} placeholder={"Ask a question"} />
+              <button type={"submit"} className={"btn btn-p"} aria-label={"Send"} disabled={this.state.voiceActive || this.state.asking} style={{"width": "48px", "padding": "0", "flex": "none"}}>
                 <svg width={"18"} height={"18"} viewBox={"0 0 24 24"} fill={"none"} stroke={"currentColor"} strokeWidth={"2"} strokeLinejoin={"round"} aria-hidden={"true"}>
                   <path d={"M4 12l16-8-6 16-2.5-6.5L4 12Z"}>
                   </path>

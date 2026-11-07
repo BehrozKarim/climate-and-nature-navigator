@@ -1,5 +1,7 @@
 # Climate and Nature Navigator
 
+The Review workflow now supports analyst-signed **Solana Devnet evidence receipts**. Save a Freight assessment, review it, sign its frozen evidence fingerprint with a browser wallet, and verify the exported bundle. See the [receipt guide](backend/docs/solana-receipts.md) for setup and the remaining live-wallet acceptance step.
+
 A Since AI 2026 hackathon project exploring how to assess climate and nature impacts across a food supply chain under different climate scenarios.
 
 ## Frontend
@@ -12,7 +14,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/` for the v3 design preview. After starting the backend and importing a snapshot, `http://127.0.0.1:5173/?mode=backend#inventory` enables the connected emissions, freight route, review, search and Ask workflows. Scenario screens and the annual freight comparison currently retain the design's sample data. See the frontend README for the integration status and checks.
+After starting the backend and importing a snapshot, open `http://127.0.0.1:5173/` for the connected emissions, freight route, review, search and Ask workflows. Configure Gemini in `backend/.env` and restart the backend for AI responses. The design preview requires `?mode=reference`; its Ask panel also uses the live backend. Scenario screens and the annual freight comparison currently retain the design's sample data. See the frontend README for the integration status and checks.
 
 Only `backend/` and `frontend/` contain tracked application files. The old `freight-ui/`, raw challenge data, design export and source-of-truth documents remain local and ignored; Git's root metadata and this README are retained.
 
@@ -43,4 +45,4 @@ Scientific sensitivities and route lookups are labelled estimates. Published inv
 
 ### Entire development tools
 
-Navigator uses Entire Graph for local code discovery, with Codex session hooks configured to keep checkpoints local. See the [Entire workflow and capability status](backend/docs/entire-workflow.md) for setup, verification, and the remaining Brain/hosted Trails requirements. These tools are optional for running the backend.
+Navigator uses Entire Graph for code discovery and Codex session hooks for context capture. The [team handoff guide](backend/docs/team-entire-handoff.md) covers push-time checkpoint sharing to the connected fork, Brain decisions and Trail review. Every teammate must enable their own hooks and clone-local sharing policy. See the [Entire workflow and capability status](backend/docs/entire-workflow.md) for observed evidence and limits. These tools are optional for running the app.

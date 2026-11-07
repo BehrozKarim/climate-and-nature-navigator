@@ -1,5 +1,7 @@
 # WeatherLens backend
 
+Solana Devnet analyst-signing receipts are available through Review. See the [receipt setup, API and demo guide](docs/solana-receipts.md). Install the updated requirements before starting; browser wallets retain all signing keys.
+
 A separately runnable Python/FastAPI backend using the challenge brief and synthetic package as source evidence. The challenge brief is the only required company-context document; the transcript and pain-point summary are not required for the snapshot. The frontend connects to this service with `?mode=backend`.
 
 The supplied **Navigator app (interactive)** ZIP now defines the feature contract: seven screens plus search, evidence, review and assistant threads. The [frontend API contract](docs/navigator-api-contract.md) maps every screen/control to requests and response fields. Use calculation previews for live controls and saved runs for evidence/review.
@@ -16,7 +18,7 @@ python -m venv .venv
 
 Open **http://127.0.0.1:8000/docs** for the interactive API, **/redoc** for reference documentation and **/health** for status. The default database is `var/weatherlens.sqlite3`. No cloud account or model API key is required for the local workflow.
 
-The supplied dataset and `new documents` folder are auto-detected next to the backend. If you move them, set `WEATHERLENS_DATASET_ROOT` to the directory containing `START_HERE.md` and `data/`, and `WEATHERLENS_DOCUMENT_ROOT` to the documents directory. `.env.example` documents the settings; it is a template and is not automatically loaded. Set environment variables before launching the service.
+The supplied dataset and `new documents` folder are auto-detected next to the backend. If you move them, set `WEATHERLENS_DATASET_ROOT` to the directory containing `START_HERE.md` and `data/`, and `WEATHERLENS_DOCUMENT_ROOT` to the documents directory. The `python -m weatherlens_backend` entry point automatically loads `backend/.env`. Explicit terminal environment variables take precedence. Restart the backend after editing `.env`.
 
 The verification run has already populated the local database with the supplied package. On a fresh database, call `POST /v1/datasets/import` with `{}`. The endpoint imports only server-configured paths, not a path supplied by the browser. Repeating an identical import reuses its dataset ID.
 
@@ -61,7 +63,7 @@ The existing explanation adapter can use Google's [OpenAI-compatible Gemini endp
 - `WEATHERLENS_LLM_API_KEY`: your Gemini API key, kept locally on the server
 - `WEATHERLENS_LLM_MODEL`: a compatible Gemini model ID available to your key
 
-The settings file reads the process environment; `.env.example` and an arbitrary `.env` file are not automatically loaded. Use `?mode=backend` in the frontend to invoke this adapter. The default design-preview chatbot uses predefined demo responses regardless of the backend key configuration. No live Gemini request has been verified without a supplied key.
+The normal backend entry point and local test command automatically load `backend/.env`. The frontend's Ask panel always uses this backend, even when `?mode=reference` selects sample screen data. If a terminal contains older LLM variables, those override `.env`; launch from a fresh terminal to use the file's values.
 
 Retrieval currently ranks real document excerpts using lexical matching. It is not embedding/vector retrieval. With a provider configured, the selected excerpts and optional saved-run context go to the model, which must return supported citation IDs. Without a provider, or on invalid output, it returns excerpts with an explicit extractive label. Citation-ID validation does not prove the factual correctness of every generated sentence.
 
@@ -74,14 +76,10 @@ New-Item -ItemType Directory -Force -Path '..\new documents' | Out-Null
 Copy-Item -LiteralPath '..\Apetit_x_SinceAI_2026_Challenge_Brief_EN_FINAL_2026-11-04.md' -Destination '..\new documents\'
 ```
 
-In the terminal that will run the backend, configure Gemini. The key prompt does not put the key in your command history. `--list-models` queries your configured provider, so choose a text-generation model available to your key rather than relying on a hardcoded model name.
+Set the three LLM fields in `backend/.env`, using the Gemini base URL above, your key and an available text model ID. The following commands list models and start the backend using that file. The key stays on the backend; it is not sent to the browser.
 
 ```powershell
-$env:WEATHERLENS_LLM_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai'
-$env:WEATHERLENS_LLM_API_KEY = [System.Net.NetworkCredential]::new('', (Read-Host 'Gemini API key' -AsSecureString)).Password
 .\.venv\Scripts\python.exe scripts/test_llm.py --list-models
-$env:WEATHERLENS_LLM_MODEL = Read-Host 'Gemini text model ID from the list'
-$env:WEATHERLENS_DOCUMENT_ROOT = (Resolve-Path '..\new documents').Path
 .\.venv\Scripts\python.exe -m weatherlens_backend
 ```
 
@@ -92,11 +90,40 @@ Leave that terminal running. In a **second terminal**, from `backend/`, import/r
 .\.venv\Scripts\python.exe scripts/test_llm.py
 ```
 
-The retrieval check must find the brief and never calls the model. The generation check succeeds only when `generation_mode` is `ai_explanation_requires_review`, `provider_status` is `responded`, and the answer includes citations belonging to the selected snapshot. A generic extractive fallback is a failed LLM check, not AI success. Use `--question 'Your specific question'` to test another question. If the API token is enabled, set the same `WEATHERLENS_API_TOKEN` in the second terminal.
+The retrieval check must find the brief and never calls the model. The generation check succeeds only when `generation_mode` is `ai_explanation_requires_review`, `provider_status` is `responded`, and factual answers include citations belonging to the selected snapshot. Simple greetings may have no citations. A generic extractive fallback is a failed LLM check, not AI success. Use `--question 'Your specific question'` to test another question. If the API token is enabled, set the same `WEATHERLENS_API_TOKEN` in the second terminal.
 
-For `not_configured`, restart the backend from the terminal containing all three LLM variables. For `unavailable_or_invalid_output`, verify the provider model ID, key, quota, timeout and JSON response compatibility; the backend deliberately retains source excerpts on provider failure. For `skipped_no_evidence`, verify the imported brief or try a more specific question. `.env` files still need an explicit loader; merely saving one does not configure the running process.
+For `not_configured`, check all three fields in `backend/.env`, check for old terminal variables overriding them, and restart the backend. For `unavailable_or_invalid_output`, the response includes a safe `provider_error` and, for HTTP errors, `provider_http_status`; check the model/key for 400/401/403, quota for 429, and timeouts or JSON compatibility otherwise. Saving `.env` does not reconfigure an already-running process.
 
-Finally, run `npm run dev` in `frontend/` and open `http://127.0.0.1:5173/?mode=backend` to test Ask in the app. Refresh the page after importing a different snapshot. The default URL without that query parameter keeps the predefined design-demo answers.
+Gemini classifies each request as neutral conversation, a source-based answer, outside scope, or missing evidence. Greetings, identity/capability questions and brief neutral small talk receive natural AI replies without fabricated citations. Factual sustainability answers still require valid supplied citations. Explicit coding/creative-writing requests are redirected before a provider call; other unrelated tasks are classified by Gemini and replaced with bounded Navigator guidance. Missing evidence also produces guidance rather than an invented fact. Guidance uses `generation_mode=guidance_not_ai` and an explicit `answer_scope`, so it cannot be mistaken for a generated source answer.
+
+Finally, run `npm run dev` in `frontend/` and open `http://127.0.0.1:5173/` to test Ask. Refresh the page after importing a different snapshot. Chat recognizes supported origin/destination questions and an explicit cargo mass, then supplies read-only RouteService calculations and factor/model provenance to Gemini. It never treats those coordinate-based route estimates as verified driving distances. Greetings may have no citations; factual answers require cited evidence. Unknown modes or missing route inputs require clarification. No chat request changes the inventory or approves a record.
+
+### Voice conversation with ElevenLabs
+
+Add the settings from [`voice.env.example`](voice.env.example) to the ignored `backend/.env`, then restart the backend:
+
+```dotenv
+ELEVENLABS_API_KEY=your_key
+ELEVENLABS_VOICE_ID=JBFqnCBsd6RMkjVDRZzb
+ELEVENLABS_STT_MODEL=scribe_v2
+ELEVENLABS_TTS_MODEL=eleven_flash_v2_5
+```
+
+Only the key is required; the voice/model values above are defaults. The key needs Speech to Text and Text to Speech permissions and available credits. Choose a voice available to your account when overriding the default. Existing Gemini configuration is still required. No provider key is sent to the browser.
+
+In Ask, choose **Talk to Navigator**, allow microphone access and speak. The browser detects a pause, sends the turn to ElevenLabs speech recognition, posts the transcript to the existing Gemini conversation, and reads the persisted assistant reply with ElevenLabs TTS. Written replies and citations remain in the thread. **Send now** ends a quiet/long turn manually; **Interrupt** stops playback and listens again; **Stop voice** ends capture and returns to typing. Closing the drawer or hiding the tab also stops capture and playback. Each recording is limited to 30 seconds in the browser and 6 MiB at the API; 15 seconds without detected speech stops the session. This is continuous, turn-based voice with manual interruption, not simultaneous full-duplex audio.
+
+The last six messages provide bounded conversation context. Clear follow-ups can reuse the previous route's endpoints and recompute an explicitly supplied new cargo mass through RouteService; source citations remain required. Raw microphone audio is forwarded in memory and is not saved by this backend. Transcripts and answers persist as normal chat messages. Audio and reply text are processed by ElevenLabs, and conversation text/evidence by the configured LLM; provider retention policies apply.
+
+Voice works on HTTPS or localhost in browsers with MediaRecorder, Web Audio and microphone access. Missing configuration, denied permission, provider failures and empty transcripts produce visible errors while typed chat remains available. The backend returns safe provider status messages without exposing keys or raw provider error bodies. The optional bearer-token protection also covers every voice endpoint.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /v1/navigator/voice/status` | Capability/configuration status, without provider credentials |
+| `POST /v1/navigator/voice/transcriptions` | Raw audio body with an `audio/*` Content-Type; returns transcript text |
+| `POST /v1/navigator/conversations/{id}/speech?expected_version=N` | MP3 for the latest saved assistant reply; stale versions return 409 |
+
+Speech playback accepts an existing conversation/version, rather than arbitrary text, so it reads the same scoped answer shown in Ask. Provider API details: [speech recognition](https://elevenlabs.io/docs/api-reference/speech-to-text/convert), [speech streaming](https://elevenlabs.io/docs/api-reference/text-to-speech/stream).
 
 | Endpoint | Purpose |
 | --- | --- |

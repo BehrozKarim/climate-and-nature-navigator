@@ -72,3 +72,42 @@ class AssistantTests(unittest.TestCase):
             raise httpx.ReadTimeout('test timeout', request=request)
         result = answer(self.store, self.ds, 'freight emissions', settings=self.settings, transport=httpx.MockTransport(timeout))
         self.assertEqual(result['provider_status'], 'unavailable_or_invalid_output')
+
+    def test_greeting_uses_provider_without_fabricated_sources(self):
+        def provider(request):
+            payload = json.loads(request.content)
+            self.assertEqual(json.loads(payload['messages'][1]['content'])['question'], 'Hello')
+            return httpx.Response(200, json={'choices': [{'message': {'content': json.dumps({'answer': 'Hello! How can I help with freight or sustainability?', 'citation_ids': []})}}]})
+        result = answer(self.store, self.ds, 'Hello', settings=self.settings, transport=httpx.MockTransport(provider))
+        self.assertEqual(result['generation_mode'], 'ai_explanation_requires_review')
+        self.assertEqual(result['answer_scope'], 'conversation_only')
+        self.assertEqual(result['citations'], [])
+
+    def test_freight_question_uses_mass_and_route_arithmetic(self):
+        def provider(request):
+            payload = json.loads(request.content)
+            context = json.loads(payload['messages'][1]['content'])
+            facts = context['computed_context']
+            self.assertEqual(facts['mass_t'], 24)
+            self.assertEqual(facts['origin'], 'Turku')
+            self.assertEqual(facts['destination'], 'Helsinki')
+            self.assertAlmostEqual(facts['total_kgco2e'], 24 * facts['distance_km'] * .092)
+            self.assertFalse(facts['externally_verified'])
+            ids = [c['citation_id'] for c in context['evidence']]
+            return httpx.Response(200, json={'choices': [{'message': {'content': json.dumps({'answer': 'The route is an illustrative estimate for 24 tonnes by truck.', 'citation_ids': ids})}}]})
+        result = answer(self.store, self.ds, 'How much freight emissions from Turku to Helsinki with a cargo of 24t?', settings=self.settings, transport=httpx.MockTransport(provider))
+        self.assertEqual(result['provider_status'], 'responded')
+        self.assertTrue(any(c['source_kind'] == 'source_row' for c in result['citations']))
+
+    def test_distance_question_does_not_invent_cargo_mass(self):
+        result = answer(self.store, self.ds, 'What is the distance between Turku and Helsinki?')
+        self.assertIsNone(result['computed_context']['mass_t'])
+        self.assertNotIn('total_kgco2e', result['computed_context'])
+
+    def test_provider_http_error_is_actionable_without_secrets(self):
+        def provider(request):
+            return httpx.Response(429, json={'error': {'message': 'private provider details test-only'}})
+        result = answer(self.store, self.ds, 'freight emissions', settings=self.settings, transport=httpx.MockTransport(provider))
+        self.assertEqual(result['provider_http_status'], 429)
+        self.assertIn('quota', result['provider_error'])
+        self.assertNotIn('test-only', result['provider_error'])

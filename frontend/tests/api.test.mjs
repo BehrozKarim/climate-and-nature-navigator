@@ -1,8 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NavigatorApi, ApiError, routeToMap, mapToRoute } from '../src/lib/api.js';
+import { NavigatorApi, ApiError, routeToMap, mapToRoute, usesBackend } from '../src/lib/api.js';
 
 const response = (body, status = 200) => ({ok:status < 400,status,json:async () => body});
+
+test('normal URLs use the backend; canned answers require explicit reference mode', () => {
+  assert.equal(usesBackend(''), true);
+  assert.equal(usesBackend('?mode=backend'), true);
+  assert.equal(usesBackend('?mode=reference'), false);
+});
 
 test('route handoff reverses coordinate order exactly once', () => {
   const route = {origin:'Riga',destination:'Kantvik',mode:'ship-bulk',distance_km:372,points:[[56.99,24.07],[60.084,24.383]]};

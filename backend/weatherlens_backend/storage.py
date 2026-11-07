@@ -32,6 +32,16 @@ CREATE TABLE IF NOT EXISTS navigator_conversations(id TEXT PRIMARY KEY, dataset_
 CREATE TABLE IF NOT EXISTS navigator_messages(id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id TEXT NOT NULL REFERENCES navigator_conversations(id), turn INTEGER NOT NULL, role TEXT NOT NULL, created_at TEXT NOT NULL, payload TEXT NOT NULL, UNIQUE(conversation_id,turn,role));
 CREATE INDEX IF NOT EXISTS navigator_reviews_dataset ON navigator_reviews(dataset_id,status,updated_at);
 CREATE INDEX IF NOT EXISTS navigator_messages_conversation ON navigator_messages(conversation_id,id);
+CREATE TABLE IF NOT EXISTS solana_receipts(
+    id TEXT PRIMARY KEY, dataset_id TEXT NOT NULL REFERENCES datasets(id),
+    review_id TEXT NOT NULL REFERENCES navigator_reviews(id), review_version INTEGER NOT NULL,
+    wallet TEXT NOT NULL, status TEXT NOT NULL, signature TEXT UNIQUE,
+    bundle_json TEXT NOT NULL, digest TEXT NOT NULL, memo TEXT NOT NULL,
+    transaction_base64 TEXT NOT NULL, last_valid_block_height INTEGER NOT NULL,
+    expires_at TEXT NOT NULL, created_at TEXT NOT NULL,
+    submitted_tx TEXT, verification TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS solana_receipt_reviews ON solana_receipts(dataset_id,review_id,created_at);
 '''
 
 
