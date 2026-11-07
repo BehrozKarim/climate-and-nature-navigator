@@ -181,6 +181,8 @@ Set all three environment variables to enable the explanation adapter:
 
 The model receives retrieved excerpts and a bounded summary of the chosen calculation. It has no tools or authority to edit results or reviews. Citation IDs must match supplied evidence; timeouts, malformed JSON and invalid citations return the labelled local explanation. Citation membership is checked, but claim entailment is not automatically verified. A valid response remains `ai_explanation_requires_review`.
 
+The explanation adapter retries transient HTTP 408/429/500/502/503/504 and network/timeouts up to three total attempts with exponential backoff and jitter. It uses a 60-second retry budget, limits an individual request timeout to 45 seconds, honours Retry-After, and returns guidance rather than retrying early when the requested delay is too long. Client configuration/access errors and invalid generated content are not automatically retried. Responses record provider_attempts, provider_http_status when applicable, and provider_retryable for temporary failures. HTTP 503 is reported as temporary provider unavailability, separately from authentication/model/quota issues. The frontend offers a manual retry after an exhausted transient failure.
+
 Provider calls can incur usage charges once configured. This build used mocked provider responses for tests; no paid model call was made. RAGFlow, embeddings and new MCP services are not required for this backend.
 
 ## Tests and verification
