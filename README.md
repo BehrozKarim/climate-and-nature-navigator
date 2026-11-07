@@ -26,3 +26,7 @@ Runtime storage defaults to `backend/var/` and is ignored by Git. `backend/.env.
 From `backend/`, run `python -m unittest discover -s tests -v`. The suite contains 84 passing tests with temporary synthetic fixtures. The real-package HTTP check is `python scripts/smoke.py` after configuring the external challenge inputs; it owns and stops its temporary server.
 
 Scientific sensitivities and route lookups are labelled estimates. Published inventory context, local prototype review and validated business impacts remain distinct.
+
+### Entire development tools
+
+Navigator uses Entire Graph for local code discovery, with Codex session hooks configured to keep checkpoints local. See the [Entire workflow and capability status](backend/docs/entire-workflow.md) for setup, verification, and the remaining Brain/hosted Trails requirements. These tools are optional for running the backend.
