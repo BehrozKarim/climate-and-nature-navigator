@@ -2,6 +2,20 @@
 
 A Since AI 2026 hackathon project exploring how to assess climate and nature impacts across a food supply chain under different climate scenarios.
 
+## Frontend
+
+The React/Vite app in [`frontend/`](frontend/README.md) follows the supplied **Navigator app (interactive)-html-v3** design across Overview, Emissions, Freight, Pathways, Climate risk, Nature and Review.
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173/` for the v3 design preview. After starting the backend and importing a snapshot, `http://127.0.0.1:5173/?mode=backend#inventory` enables the connected emissions, freight route, review, search and Ask workflows. Scenario screens and the annual freight comparison currently retain the design's sample data. See the frontend README for the integration status and checks.
+
+Only `backend/` and `frontend/` contain tracked application files. The old `freight-ui/`, raw challenge data, design export and source-of-truth documents remain local and ignored; Git's root metadata and this README are retained.
+
 ## Backend
 
 The standalone Python/FastAPI service is in [`backend/`](backend/README.md). It supports Overview, Inventory, Freight, Pathways, Climate risk, Nature and Review, plus search, source evidence and assistant threads.
