@@ -1,0 +1,17 @@
+# Keep the application source in these two directories. Local inputs stay local.
+/*
+!/backend/
+!/frontend/
+!/.gitignore
+!/README.md
+
+**/node_modules/
+**/dist/
+**/.env
+**/.env.local
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/var/
+**/test-results/
+**/.DS_Store
