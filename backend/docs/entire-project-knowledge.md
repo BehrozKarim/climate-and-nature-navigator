@@ -13,4 +13,6 @@ These are curated engineering notes, not imported conversation transcripts or ex
 
 Paths above are relative to `backend/`. These notes were checked against Graph results at backend commit `ca4fecdbded727bf333c90b01ddc5921235565d5` on 2026-11-07.
 
-Brain update: local setup now works. The Inventory rule was authored as `fact:4c92d7f410d78e3feff90814` under `constraints.inventory.source_evidence` and returned by recall/brief. It is not a distilled session memory; no sessions were available to distill. Hosted Brain sync remains disconnected, and the local database is not shared by Git pull. The generated agent guide now includes Graph and Brain.
+Brain update: hosted sync is connected to the public fork and authored memories round-trip successfully. The Inventory rule `fact:4c92d7f410d78e3feff90814` is under `constraints.inventory.source_evidence`; Solana implementation state is under `project.solana.analyst_receipts`. These are authored memories, not automatically distilled session decisions. Git pull does not share a local database; each teammate must connect their Brain. The generated agent guide includes Graph and Brain.
+
+Capture audit: hosted checkpoints `89ee5233de7b` and `32a4783f8f15` contain approved snapshots of this conversation. The running parent-workspace chat has no live hook state, so do not claim continuous automatic capture. Brain v0.5.1 needed the fork's actual `entire/checkpoints/v1` branch fetched into the local metadata branch to discover shared sessions. See the team guide before repeating setup.

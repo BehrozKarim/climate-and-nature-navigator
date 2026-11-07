@@ -7,14 +7,22 @@ Entire supports development of Climate and Nature Navigator. It is not a backend
 | Capability | Status and evidence |
 | --- | --- |
 | CLI | Official Windows release 0.13.1 installed; archive SHA-256 verified against its release checksums. |
-| Sessions | Codex's seven project hooks and Git hooks installed. Automatic uploads to the public connected fork were explicitly approved on 2026-11-07 and configured for future pushes. No captured checkpoint has been demonstrated for this task. |
+| Sessions | Hosted checkpoints `89ee5233de7b` and `32a4783f8f15` were uploaded and verified through the fork's API. They are manually attached snapshots of this conversation; the running parent-workspace chat still has no live hook state. Automatic upload settings alone do not prove ongoing capture. |
 | Graph | Official Windows release 0.6.0 installed and verified. Initial committed-tree index: 58 files, 38 Python files, 690 symbols, 2,510 relations, zero parser failures. Queries found pathway calculations and decision-review implementations/tests. |
-| Brain | The previously blocked 0.5.1 executable now runs. Deterministic local setup passed; one Inventory invariant was saved and retrieved with recall and brief. Model backfill, daemon, agent hooks and hosted memory sync remain off. |
-| Hosted Trails | Connected fork `rehanali53/climate-and-nature-navigator` is mirrored on Entire. [Trail #2](https://entire.com/gh/rehanali53/-/trails/2) links the Inventory branch; teammate review and merge remain pending. |
+| Brain | Connected to the verified hosted fork; authored memories upload and return through the hosted delta feed. Session export read 3 sessions from 4 checkpoints at the implementation handoff. Model distillation/backfill and Windows daemon remain off. |
+| Hosted Trails | [Trail #6](https://entire.com/gh/rehanali53/-/trails/6) links Solana commit `329c985` and its shared implementation checkpoint. Solana and the earlier Inventory/AI/voice work are merged in the fork; upstream integration is proposed separately against the original team repository. |
 
 The initial Graph figures refer to backend commit `ca4fecdbded727bf333c90b01ddc5921235565d5`. Brain setup at `2994c24` subsequently reported 93 files and 3,625 symbols. These are observed snapshots, not current file-count guarantees.
 
-## Current team handoff
+## Current capture and memory audit
+
+On 2026-11-07 the hosted API read checkpoint `32a4783f8f15` successfully. `brain memories sync --json` exchanged all 8 authored project memories with no unpublished items at this audit. These are actual shared memories, not model-distilled session decisions. Each teammate must connect their own Brain to the same hosted fork and authenticate with repository access.
+
+The active chat reports no Entire session state. Its existing transcript was shared only after explicit user approval, using supported `session attach` against already published commits, with no Git history rewrite. Future automatic capture requires a new coding session started in this checkout with approved hooks. After a completed turn, `entire session current` must identify its live state and `checkpoint list --pending` must show pending agent work. Do not call capture automatic while those checks fail.
+
+Brain v0.5.1 missed metadata fetched only under a non-origin `entire` remote. This checkout now has the real shared `entire/checkpoints/v1` local metadata branch, so session export can enumerate it. Fetch that branch from the public fork before refreshing sessions; do not force an unexpected divergence. A teammate can follow the explicit commands in [team-entire-handoff.md](team-entire-handoff.md).
+
+## Earlier implementation handoff (historical)
 
 Follow [team-entire-handoff.md](team-entire-handoff.md). The user explicitly approved automatic future checkpoint uploads, including captured prompts, responses and tool outputs, to public fork `rehanali53/climate-and-nature-navigator`. Shared settings now name that dedicated destination and permit uploads; this clone uses the automatic push policy. Each teammate must enable their agent capture/hooks and check local overrides. Historical conversations have not been imported.
 

@@ -68,9 +68,26 @@ Observed CLI 0.13.1 caveat: `--skip-push-sessions=false` did not clear an existi
 
 Sessions retain what happened; Graph locates current code; Brain retrieves durable decisions and their context for the next agent. Start a task with `brief`/`recall`; after settling a decision, save it with `remember` and an explicit path. Check the cited source before relying on old memory.
 
-Brain memory is local by default. Teammates pulling Git do not automatically get your local memory database. They can build their own Brain from committed docs/history and available sessions. To share durable memories through Entire, deliberately connect each Brain to the same hosted fork with `entire brain connect` (inspect `--help` for its target flags), then verify `entire brain memories sync`. Connection can upload memory immediately; this task does not enable hosted Brain sync.
+Brain memory is local by default. Teammates pulling Git do not automatically get your local memory database. This checkout is now connected to the hosted fork and its authored memories have been uploaded and read back. Every teammate must connect their own Brain to the same hosted target; connection may upload their local memories immediately.
 
 This checkout's Brain identity follows `origin` (`gh/behrozkarim/climate-and-nature-navigator`), while the connected hosted project is the fork. Do not run a bare `connect` and assume it chooses the fork: use the fork's verified hosted repository ID and API URL via `--repo-id` and `--api-url`. Inspect `entire repo view` for that destination first. The local Inventory memory has been authored and retrieved successfully; it was not extracted from a captured session.
+
+Verified target and explicit connection commands (re-resolve placement if the project moves):
+
+```powershell
+entire repo view entire://aws-eu-central-1.entire.io/gh/rehanali53/climate-and-nature-navigator --json
+entire brain connect --repo-id 01M6V935R4NWRPTT1SP25332XE --api-url https://aws-us-east-2.api.entire.io
+entire brain memories sync --json
+```
+
+For the shared legacy checkpoint catalog, Brain v0.5.1 enumerates a local metadata branch or `origin` metadata. If the fork is a different remote, fetch its actual metadata into the local catalog before indexing:
+
+```powershell
+git fetch https://github.com/rehanali53/climate-and-nature-navigator.git refs/heads/entire/checkpoints/v1:refs/heads/entire/checkpoints/v1
+entire brain refresh sessions --scope all --history-index
+```
+
+This updates metadata, not application code. Do not force a divergent local catalog. The active parent-workspace chat is not live-captured merely because these commands succeed: start a new coding session in the repository, approve hooks and verify `entire session current` after a turn. The existing shared conversation checkpoints were deliberately attached with the user's explicit approval.
 
 Setup here uses no backfill, daemon or agent hooks. Automatic extraction from past sessions and background distillation are separate optional features that can use model tokens. Brain v0.5.1 does not provide an MCP server; use its CLI. Windows has no Brain watcher service yet, so do not claim automatic background extraction on Windows.
 
