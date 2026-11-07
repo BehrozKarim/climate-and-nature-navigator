@@ -72,15 +72,16 @@ export default class Main extends React.Component {
   async askBackend(q) {
     if (this._asking) return;
     this._asking = true;
-    const pending = { role: 'ai', text: 'Retrieving sources…', shown: 100, cites: [] };
+    const pending = { role: 'ai', text: 'Retrieving sources and asking AI… Temporary connection failures are retried automatically.', shown: 150, cites: [] };
     this.setState(st => ({ thread: [...st.thread, { role:'user', text:q }, pending], askInput:'', ask:true, asking:true, palette:false, trace:null }));
     try {
       const messages = await api.ask(q);
-      if (!this._dead) this.setState({ thread: messages.map(m => {
+      if (!this._dead) this.setState({ thread: messages.map((m,index) => {
         const generated = m.generation_mode === 'ai_explanation_requires_review';
-        const label = generated ? `AI · ${m.provider_model || 'Navigator'}${m.answer_scope === 'conversation_only' ? '' : ' · requires review'}` : m.generation_mode === 'guidance_not_ai' ? 'Navigator guidance' : `Source response · ${m.provider_error || 'AI generation was not used.'}`;
+        const label = generated ? `AI · ${m.provider_model || 'Navigator'}${m.answer_scope === 'conversation_only' ? '' : ' · requires review'}` : m.generation_mode === 'guidance_not_ai' ? 'Navigator guidance' : `${m.provider_status === 'unavailable_or_invalid_output' ? 'AI unavailable' : 'Source response'} · ${m.provider_error || 'AI generation was not used.'}`;
         const text = m.role === 'assistant' ? label + '\n\n' + m.text : m.text;
         return { role: m.role === 'assistant' ? 'ai' : 'user', text, shown:text.length,
+          retryQuestion:m.role === 'assistant' && m.provider_retryable && index === messages.length-1 ? messages[index-1]?.text : null,
           cites:(m.citations || []).map(c => [c.path, { title:c.path, value:c.source_kind === 'model' ? 'Model parameters' : c.line_start ? 'Lines ' + c.line_start + '–' + c.line_end : 'Source', unit:'', status:'draft', note:c.excerpt, steps:[{k:'Source',t:c.path,id:c.citation_id,d:c.file_sha256 || c.model?.config_sha256 || c.source?.file_sha256 || ''}] }]) };
       }) });
       return messages.filter(message => message.role === 'assistant').at(-1);
@@ -115,7 +116,7 @@ export default class Main extends React.Component {
     const st = this.state; const idx = Math.max(0, SCREENS.findIndex((x) => x.id === st.screen)); const cur = SCREENS[idx];
     const nav = SCREENS.map((x, i) => ({ label: x.label, d1: ICONS[x.icon][0], d2: ICONS[x.icon][1], d3: ICONS[x.icon][2], cur: i === idx ? 'page' : 'false', color: i === idx ? '#3CCB7F' : '#C9D8E2', badge: x.id === 'review' && st.inbox > 0, badgeN: String(st.inbox), go: () => this.navTo(x.id) }));
     const pal = st.palette ? this.palGroups() : [];
-    const thread = st.thread.map((m, i) => { const done = m.role === 'ai' && m.shown >= m.text.length; return { user: m.role === 'user', ai: m.role === 'ai', text: m.text, display: m.role === 'ai' ? m.text.slice(0, m.shown) : m.text, caret: m.role === 'ai' && !done ? 'caret' : '', done, cites: (m.cites || []).map((c) => ({ label: c[0], open: () => this.openTrace(typeof c[1] === 'object' ? c[1] : null) })) }; });
+    const thread = st.thread.map((m, i) => { const done = m.role === 'ai' && m.shown >= m.text.length; return { user: m.role === 'user', ai: m.role === 'ai', text: m.text, display: m.role === 'ai' ? m.text.slice(0, m.shown) : m.text, caret: m.role === 'ai' && !done ? 'caret' : '', done, canRetry:!!m.retryQuestion,retry:()=>this.ask(m.retryQuestion), cites: (m.cites || []).map((c) => ({ label: c[0], open: () => this.openTrace(typeof c[1] === 'object' ? c[1] : null) })) }; });
     const asked = st.thread.filter((m) => m.role === 'user').map((m) => m.text);
     const suggest = Q.map((x) => ({ q: x.q, go: () => this.ask(x.q) })); const suggestRest = suggest.filter((x) => asked.indexOf(x.q) < 0); const lastAi = st.thread[st.thread.length - 1];
     const tr = st.trace || { title: '', value: '', unit: '', steps: [] };
@@ -410,6 +411,7 @@ export default class Main extends React.Component {
                     </div>
                     {m.done ? <>
                       <div style={{"display": "flex", "flexWrap": "wrap", "gap": "6px"}}>
+                        {m.canRetry && <button type="button" className="ev" disabled={this.state.voiceActive || this.state.asking} onClick={m.retry}>Try again</button>}
                         {(m.cites || []).map((c, index1) => <React.Fragment key={index1}>
                           <button type={"button"} className={"ev rise"} onClick={c.open} style={{"--i": index1}}>
                             <svg width={"13"} height={"13"} viewBox={"0 0 24 24"} fill={"none"} stroke={"currentColor"} strokeWidth={"2.2"} strokeLinecap={"round"} aria-hidden={"true"}>
