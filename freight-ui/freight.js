@@ -5,6 +5,7 @@ export const renewableId = 'EF-TKM-TRUCK-HVO';
 export const factors = sample.factors;
 export const issues = sample.issues;
 export const version = sample.version;
+export const studioData = sample.studio;
 export const modes = {
   Truck: ['truck', 'truck-reefer'],
   Ship: ['ship-bulk', 'ship-reefer'],

@@ -226,6 +226,39 @@ def validate(package, data, shipments, purchases, lanes):
               f"A1 score {100 * f1 * (0.75 + 0.25 * accuracy):.2f}")
 
 
+def studio_inputs(package, data):
+    scenarios = data / "05_scenarios"
+    nature = data / "06_nature"
+    loads = records(package / "tasks" / "dev" / "D1_dev_catchments_2025.csv")
+    metadata = {row["catchment_id"]: row for row in records(nature / "catchments.csv")}
+    geometry = json.loads((nature / "catchments.geojson").read_text(encoding="utf-8"))["features"]
+    shapes = {}
+    for feature in geometry:
+        points = feature["geometry"]["coordinates"][0]
+        shapes[feature["properties"]["catchment_id"]] = [[x, y] for x, y, *_ in points]
+    return {
+        "catchments": [
+            {
+                "id": row["catchment_id"],
+                "p": float(row["apetit_p_to_water_kg"]),
+                "n": float(row["apetit_n_to_water_kg"]),
+                "region": metadata[row["catchment_id"]]["region"],
+                "status": metadata[row["catchment_id"]]["ecological_status_class"],
+                "sensitivity": float(metadata[row["catchment_id"]]["p_sensitivity"]),
+            }
+            for row in loads
+        ],
+        "shapes": shapes,
+        "origins": records(nature / "origin_state_of_nature_indicative.csv"),
+        "levers": [row for row in records(scenarios / "decarbonisation_levers.csv")
+                   if row["lever_id"] in {"L08", "L09", "L20", "L21", "L27"}],
+        "transition": [row for row in records(scenarios / "transition_scenarios.csv")
+                       if row["scenario"] in {"net_zero_2050", "delayed_transition"}],
+        "prices": {row["item"]: [float(row["contract_price_eur_t"]), float(row["replacement_import_premium_frac"])]
+                   for row in records(scenarios / "contract_prices_and_replacement_premiums.csv") if row["year"] == "2025"},
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--package", type=Path, default=DEFAULT_PACKAGE)
@@ -254,6 +287,7 @@ def main():
             for row in records(data / "01_master" / "emission_factor_library.csv") if row["ef_id"].startswith("EF-TKM-")
         },
         "issues": issues,
+        "studio": studio_inputs(args.package, data),
     }
     (HERE / "sample.js").write_text(
         "export default " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n",

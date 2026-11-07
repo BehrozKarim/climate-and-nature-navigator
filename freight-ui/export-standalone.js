@@ -30,6 +30,7 @@ const standalone = page
   .replace(scriptTag, () => `<script type="module">${script.replace(/<\/script/gi, '<\\/script')}</script>`)
   .replace(stylesheetTag, () => `<style>${styles}</style>`);
 
-const destination = new URL('./Apetit-Freight-Prototype.html', import.meta.url);
-await writeFile(destination, standalone);
-console.log('Open Apetit-Freight-Prototype.html in your browser.');
+for (const filename of ['Apetit-Decision-Studio.html', 'Apetit-Freight-Prototype.html']) {
+  await writeFile(new URL('./' + filename, import.meta.url), standalone);
+}
+console.log('Open Apetit-Decision-Studio.html in your browser.');

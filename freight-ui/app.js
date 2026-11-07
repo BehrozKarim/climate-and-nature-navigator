@@ -1,14 +1,13 @@
 import '@fontsource-variable/manrope/wght.css';
-import '@fontsource-variable/newsreader/wght.css';
-import '@fontsource-variable/newsreader/wght-italic.css';
-import landscape from './nordic-fields.webp';
 import {
   createElement, ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, ClipboardList, Download,
-  FileCheck2, FileText, Gauge, Leaf, Package, Pause, Play, Route, Search, Ship, Truck, X,
+  FileCheck2, FileText, Gauge, Package, Pause, Play, Search, Ship, Truck, X,
+  Database, GitBranch, Sprout, Map, Sparkles, Factory, Waves, ChartNoAxesCombined, Send, LayoutDashboard,
 } from 'lucide';
 import { factors, issues, version, findLeg, freight, fuelComparison, estimateKg, issueId } from './freight.js';
+import { createStudio, tracks } from './studio.js';
 
-const icons = { ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, ClipboardList, Download, FileCheck2, FileText, Gauge, Leaf, Package, Pause, Play, Route, Search, Ship, Truck, X };
+const icons = { ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, ClipboardList, Download, FileCheck2, FileText, Gauge, Package, Pause, Play, Search, Ship, Truck, X, Database, GitBranch, Sprout, Map, Sparkles, Factory, Waves, ChartNoAxesCombined, Send, LayoutDashboard };
 const icon = (name, size = 18) => createElement(icons[name], {
   width: size, height: size, 'stroke-width': 1.65, 'aria-hidden': 'true',
 }).outerHTML;
@@ -17,7 +16,7 @@ const esc = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({
 })[char]);
 const fmt = (value, digits = 0) => new Intl.NumberFormat('en-GB', { maximumFractionDigits: digits }).format(value);
 const tonnes = (kg) => fmt(kg / 1000, 2);
-const pages = { overview: 'Overview', checks: 'Data checks', inventory: 'Freight inventory', fuel: 'Fuel test' };
+const pages = { overview: 'Overview', checks: 'Data checks', 'inventory-preview': 'Inventory preview', inventory: 'Freight audit', fuel: 'Fuel test', pathways: 'Reduction pathways', risk: 'Crop & sourcing risk', nature: 'Nature hotspots', copilot: 'Evidence copilot' };
 const sources = {
   shipments: ['Freight', 'Truck'],
   erp_purchase_lines: ['Purchasing', 'Package'],
@@ -26,7 +25,6 @@ const sources = {
   travel_bookings: ['Travel', 'ClipboardList'],
 };
 const sourceCredit = 'Apetit Climate & Nature Navigator synthetic dataset, Since AI ry 2026 (CC BY 4.0)';
-const roadPath = 'M1432 742 C1422 693 1380 652 1325 607 C1263 561 1196 534 1194 489 C1192 448 1253 419 1302 384 C1346 353 1388 332 1388 294';
 const main = document.querySelector('#main');
 const nav = document.querySelector('#navigation');
 const drawer = document.querySelector('#drawer');
@@ -43,13 +41,13 @@ let filter = 'all';
 let search = '';
 let statusFilter = 'open';
 let selectedIssue;
-let sceneCleanup;
 let origin;
 let pointer = false;
 let focusAfterClose;
 let flash;
 let share = 40;
 let rate = '';
+saved.answerReviews ??= {};
 
 const decisions = () => saved.decisions;
 const open = () => issues.filter((issue) => !decisions()[issueId(issue)]);
@@ -79,33 +77,12 @@ function currentStatus(issue) {
   return badge('Needs review', 'input');
 }
 
-function hero() {
-  const count = open().length;
-  return '<section class="hero work-hero" aria-labelledby="hero-heading"><svg class="road-art" id="hero-route" viewBox="0 0 1536 1024" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">' +
-    '<image href="' + landscape + '" width="1536" height="1024"/>' +
-    '<defs><filter id="road-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="7"/></filter></defs>' +
-    '<path class="route-shadow" d="' + roadPath + '"/><path class="route-line" d="' + roadPath + '"/>' +
-    '<circle class="route-node" cx="1388" cy="294" r="7"/><circle class="route-node" cx="1432" cy="742" r="7"/>' +
-    '<g class="route-runner"><circle r="19" fill="#e7ffc0" opacity=".65" filter="url(#road-glow)"/><circle r="7" fill="#f5ffd8"/>' +
-    '<animateMotion dur="6.5s" repeatCount="indefinite" path="' + roadPath + '"/></g></svg>' +
-    '<div class="hero-content"><div class="hero-kicker"><span></span> 2025 INVENTORY REVIEW</div>' +
-    '<h1 id="hero-heading">Bring the numbers<br><em>into focus.</em></h1>' +
-    '<p>Find data gaps, check their sources, and approve corrections to inbound freight.</p>' +
-    '<a class="button hero-button" href="#checks">' + (count ? 'Review ' + count + ' flags' : 'Open data checks') + icon('ArrowRight', 17) + '</a></div>' +
-    '<div class="hero-route-card"><span class="road-caption">' + icon('Route', 17) + ' Illustrative road</span>' +
-    '<button class="motion-toggle" type="button" data-action="motion" aria-label="Pause road animation">' + icon('Pause', 16) + '</button></div></section>';
-}
-
-function metrics(data) {
-  const unresolved = open();
-  return '<section class="metrics" aria-label="2025 workbench summary"><div><span>' + icon('Leaf', 16) +
-    ' Inbound freight estimate</span><strong>' + tonnes(data.kg) + ' <small>t CO₂e</small></strong><p>Scope 3 · Category 4 only</p></div><div><span>' +
-    icon('CircleAlert', 16) + ' Flags to review</span><strong>' + unresolved.length + '</strong><p>' +
-    unresolved.filter((issue) => issue.factor).length + ' possible freight gaps</p></div><div><span>' + icon('Truck', 16) +
-    ' Recorded legs counted</span><strong>' + fmt(data.included.length) + '</strong><p>' + data.held.length +
-    ' held by input checks</p></div><div class="period-metric"><span>' + icon('FileCheck2', 16) +
-    ' Approved additions</span><strong>' + data.adjustments.length + '</strong><p>Source records retained</p></div></section>';
-}
+const studio = createStudio({
+  icon, esc, fmt, btn, head, badge, show, render, persist,
+  openCount: () => open().length,
+  inventoryKg: () => freight(decisions()).kg,
+  reviewState: saved.answerReviews,
+});
 
 function issueRow(issue) {
   const [source, glyph] = sources[issue.table];
@@ -128,17 +105,6 @@ function modeBars(data) {
     '<span>' + icon(mode === 'Truck' ? 'Truck' : 'Ship', 17) + ' ' + mode + '</span>' +
     '<span class="mode-track" aria-hidden="true"><i style="--share:' + kg / total + '"></i></span>' +
     '<strong>' + tonnes(kg) + ' t</strong>' + icon('ChevronRight', 14) + '</button>').join('') + '</div>';
-}
-
-function overview() {
-  const data = freight(decisions());
-  const priority = open().sort(byImpact).slice(0, 4);
-  return hero() + metrics(data) + '<div class="overview-grid"><section class="surface queue-preview">' +
-    '<header class="section-heading"><div><h2>Start with the freight gaps</h2><p>Sorted by estimated impact on the inventory.</p></div>' +
-    '<a class="button small secondary" href="#checks">All checks ' + icon('ArrowRight', 15) + '</a></header>' +
-    '<div class="queue-list">' + (priority.length ? priority.map(issueRow).join('') : empty()) + '</div></section>' +
-    '<section class="surface trend"><header class="section-heading"><div><h2>Freight by mode</h2><p>2025 · Recorded legs plus approved additions</p></div></header>' +
-    modeBars(data) + '<a class="text-link section-link" href="#inventory">Open freight inventory ' + icon('ArrowUpRight', 15) + '</a></section></div>';
 }
 
 function checkRows() {
@@ -220,30 +186,35 @@ function fuelPage() {
 }
 
 function syncMotion() {
-  const route = document.querySelector('#hero-route');
+  const route = document.querySelector('#network-flow');
   const control = document.querySelector('[data-action=motion]');
   if (!route || !control) return;
   const stopped = saved.paused || reduce.matches;
   if (stopped) route.pauseAnimations?.();
   else route.unpauseAnimations?.();
   control.hidden = reduce.matches;
-  control.setAttribute('aria-label', stopped ? 'Play road animation' : 'Pause road animation');
+  control.setAttribute('aria-label', stopped ? 'Play relationship animation' : 'Pause relationship animation');
   control.innerHTML = icon(stopped ? 'Play' : 'Pause', 16);
 }
 function render(focus = false) {
   const current = page();
-  nav.innerHTML = Object.entries(pages).map(([key, label]) =>
-    '<a href="#' + key + '"' + (current === key ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
-  const views = { overview, checks, inventory, fuel: fuelPage };
-  main.innerHTML = (flash ? '<div class="save-banner" role="status">' + icon('Check', 17) + esc(flash) + '</div>' : '') + views[current]();
+  const dataViews = { checks: 'A1 · Data checks', 'inventory-preview': 'A2 · Inventory preview', inventory: 'Freight audit', fuel: 'Fuel sensitivity' };
+  const active = dataViews[current] ? 'checks' : current;
+  const destinations = [{ page: 'overview', name: 'Overview', icon: 'LayoutDashboard' }, ...tracks];
+  nav.innerHTML = '<span class="rail-heading">Workspace</span>' + destinations.map(({ page: key, name, icon: glyph, code }) =>
+    '<a href="#' + key + '"' + (active === key ? ' aria-current="page"' : '') + '>' +
+    icon(glyph, 17) + '<span>' + name + '</span>' + (code ? '<small>' + code + '</small>' : '') + '</a>').join('');
+  document.querySelector('#studio-breadcrumb').innerHTML = 'Workspace <span>/</span> <strong>' + pages[current] + '</strong>';
+  const views = { ...studio, checks, 'inventory-preview': studio.inventoryPreview, inventory, fuel: fuelPage };
+  const tabs = dataViews[current] ? '<div class="studio-tabs data-tabs">' + Object.entries(dataViews).map(([id, name]) =>
+    '<a href="#' + id + '"' + (id === current ? ' aria-current="page"' : '') + '>' + name + '</a>').join('') + '</div>' : '';
+  main.innerHTML = tabs + (flash ? '<div class="save-banner" role="status">' + icon('Check', 17) + esc(flash) + '</div>' : '') + views[current]();
   syncMotion();
   if (focus) main.focus({ preventScroll: true });
 }
 
 function show(title, label, content) {
   if (!drawer.open) origin = document.activeElement;
-  sceneCleanup?.();
-  sceneCleanup = undefined;
   drawer.className = pointer ? 'from-pointer' : '';
   drawer.innerHTML = '<header class="drawer-heading"><div><p>' + esc(label) + '</p><h2 id="drawer-title" tabindex="-1">' + esc(title) +
     '</h2></div>' + closeButton() + '</header><div class="drawer-body">' + content + '</div>';
@@ -260,11 +231,14 @@ function issueDetails(issue) {
     '<p class="drawer-description">' + esc(issue.explanation) + '</p>' +
     '<div class="evidence-card"><span class="type-icon">' + icon('FileText', 18) + '</span><div><strong>Source</strong><p>' +
     esc(issue.source) + '</p><p>' + esc(issue.subject) + '</p></div></div>' +
-    (road ? '<div class="scene" id="leg-scene"><div class="scene-fallback" aria-hidden="true">' + icon('Truck', 39) + '<i></i>' +
-      icon('Ship', 39) + '</div><span>Two-leg schematic · illustration</span></div>' +
-      '<div class="leg-choices">' + btn('Road · ' + fmt(road.distance, 1) + ' km', 'leg', 'Truck', 'secondary', 'road') +
-      btn(decision?.km ? 'Sea · ' + fmt(decision.km, 1) + ' km' : 'Sea · Missing', 'leg', 'Ship', 'secondary', 'vessel') +
-      '</div><p class="leg-feedback" id="leg-feedback" role="status"></p>' : '') +
+    (road ? '<section class="transport-strip"><h3>Shipment legs</h3><div class="transport-legs">' +
+      '<button type="button" data-action="leg" data-value="road" aria-pressed="true"><i>' + icon('Truck', 18) +
+      '</i><span><strong>Road</strong><small>' + fmt(road.distance, 1) + ' km · Recorded</small></span></button>' +
+      '<span class="transport-connector" aria-hidden="true"></span>' +
+      '<button type="button" data-action="leg" data-value="vessel" aria-pressed="false"><i>' + icon('Ship', 18) +
+      '</i><span><strong>Sea</strong><small>' + (decision?.km ? fmt(decision.km, 1) + ' km · Approved' : 'Distance missing') +
+      '</small></span></button></div><p class="leg-feedback" id="leg-feedback" role="status">' + esc(road.id) +
+      ' · ' + fmt(road.mass, 3) + ' t · ' + esc(road.factor) + '</p></section>' : '') +
     (factor ? '<div class="next-box"><strong>Suggested estimate · ' + fmt(issue.km, 1) + ' km</strong><p>Median of ' +
       issue.matchCount + ' comparable recorded legs (' + fmt(issue.range[0], 1) + '–' + fmt(issue.range[1], 1) +
       ' km). Uses ' + fmt(issue.mass, 3) + ' tonnes from road leg ' + issue.road + '. Verify the port pair or carrier record before using a measured distance.</p>' +
@@ -276,10 +250,6 @@ function issueDetails(issue) {
     (decision ? '<div class="evidence-card"><strong>' + esc(decision.reviewer) + '</strong><p>' + esc(decision.note) + '</p></div>' :
       '<div class="drawer-actions">' + btn(factor ? 'Review correction' : 'Record review', 'review', 'Check', 'primary') +
       btn('Dismiss flag', 'dismiss', null, 'quiet') + '</div>'));
-  const scene = drawer.querySelector('#leg-scene');
-  if (scene) import('./scene.js').then(({ mountScene }) => {
-    if (scene.isConnected) sceneCleanup = mountScene(scene, !decision?.km, showLeg);
-  }).catch(() => { /* The static diagram and controls are always available. */ });
 }
 function showLeg(id) {
   const node = drawer.querySelector('#leg-feedback');
@@ -389,6 +359,7 @@ document.addEventListener('click', (event) => {
   const control = event.target.closest('[data-action]');
   if (!control) return;
   const { action, value } = control.dataset;
+  if (studio.handle(action, value)) return;
   switch (action) {
     case 'motion': saved.paused = !saved.paused; persist(); syncMotion(); break;
     case 'item': issueDetails(issues.find((issue) => issueId(issue) === value)); break;
@@ -416,6 +387,7 @@ document.addEventListener('click', (event) => {
   }
 });
 document.addEventListener('change', (event) => {
+  if (studio.change(event.target)) return;
   if (event.target.id === 'status-filter') {
     statusFilter = event.target.value;
     document.querySelector('#queue-results').innerHTML = checkRows();
@@ -440,6 +412,7 @@ document.addEventListener('input', (event) => {
 drawer.addEventListener('submit', (event) => {
   event.preventDefault();
   const form = event.target;
+  if (studio.submit(form)) return;
   if (form.id !== 'review-form' || decisions()[issueId(selectedIssue)]) return;
   const fields = Object.fromEntries(Array.from(new FormData(form), ([key, value]) => [key, value.trim()]));
   for (const input of form.querySelectorAll('[required][name]')) {
@@ -461,13 +434,14 @@ drawer.addEventListener('submit', (event) => {
   drawer.close();
 });
 drawer.addEventListener('close', () => {
-  sceneCleanup?.();
-  sceneCleanup = undefined;
   if (!focusAfterClose && origin?.isConnected) origin.focus();
   else main.focus({ preventScroll: true });
   focusAfterClose = false;
 });
 window.addEventListener('hashchange', () => { flash = undefined; render(true); window.scrollTo(0, 0); });
+main.addEventListener('submit', (event) => {
+  if (studio.submit(event.target)) event.preventDefault();
+});
 document.querySelector('.skip-link').addEventListener('click', (event) => { event.preventDefault(); main.focus(); });
 reduce.addEventListener('change', syncMotion);
 document.querySelector('#dataset-credit').textContent = sourceCredit + ' · v' + version;
