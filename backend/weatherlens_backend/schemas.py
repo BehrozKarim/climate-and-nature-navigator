@@ -135,6 +135,7 @@ class NavigatorInventory(DatasetInput):
 class NavigatorPathway(NavigatorScenario):
     action_ids: list[Short] | None = Field(default=None, max_length=30)
     selection_mode: Literal['manual', 'all', 'cheapest'] = 'manual'
+    start_years: dict[Short, Year] = Field(default_factory=dict, max_length=30)
 
 
 class NavigatorClimate(DatasetInput):

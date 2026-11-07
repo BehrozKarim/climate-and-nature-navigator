@@ -77,8 +77,9 @@ class ClimateRiskService:
         cube = climate_cube(str(self.store.path.resolve()), self.ds, self.model['config_sha256'])
         crop = p['crops'][crop_id]
         region = crop['region']
-        region_parameters = p['regions'][region]
-        response = region_parameters['season_benefit_pct_per_c'] - crop['heat_sensitivity'] * region_parameters['heat_response_per_c'] - crop['drought_sensitivity'] * region_parameters['drought_response_per_c']
+        # No fitted crop-response coefficients are supplied. Expose weather evidence
+        # without converting design-reference sensitivities into yield predictions.
+        response = None
         expected = {r['values']['cell_id'] for r in cube['raw_grid'] if r['values'].get('region') == region and r['values'].get('cell_id')}
         unidentified = sum(not r['values'].get('cell_id') for r in cube['raw_grid'] if r['values'].get('region') == region)
         def points(scenario, y, selected_region=None):
@@ -97,26 +98,25 @@ class ClimateRiskService:
             if not rows:
                 return None
             warming = mean(r['summer_warming_c'] for r in rows)
-            return {'summer_warming_c': warming, 'seasonal_hot_days': mean(r['seasonal_hot_days'] for r in rows), 'water_deficit_mm': mean(r['water_deficit_mm'] for r in rows), 'yield_change_pct_estimate': max(-100, min(100, warming * response_coefficient)), 'matched_cells': len(rows), 'baseline_cell_years_included': sum(len(r['baseline_years_included']) for r in rows)}
+            return {'summer_warming_c': warming, 'seasonal_hot_days': mean(r['seasonal_hot_days'] for r in rows), 'water_deficit_mm': mean(r['water_deficit_mm'] for r in rows), 'yield_change_pct_estimate': None, 'matched_cells': len(rows), 'baseline_cell_years_included': sum(len(r['baseline_years_included']) for r in rows)}
         selected = summary(physical_scenario, year)
         grid = points(physical_scenario, year)
         for point in grid:
-            point['yield_change_pct_estimate'] = max(-100, min(100, point['summer_warming_c'] * response)) if point['region'] == region else None
+            point['yield_change_pct_estimate'] = None
         timeline = [{'scenario': scenario, 'year': y, 'values': summary(scenario, y)} for scenario in ('ssp126', 'ssp245', 'ssp585') for y in range(2025, 2061)]
         hedge = {}
         for pea_id in ('pea_fi', 'pea_se'):
             pea = p['crops'][pea_id]
-            rp = p['regions'][pea['region']]
-            coefficient = rp['season_benefit_pct_per_c'] - pea['heat_sensitivity'] * rp['heat_response_per_c'] - pea['drought_sensitivity'] * rp['drought_response_per_c']
+            coefficient = None
             hedge[pea['region']] = summary(physical_scenario, year, pea['region'], coefficient)
         prices, price_issues = unique([r for r in self.store.rows(self.ds, 'contract_prices_and_replacement_premiums') if r['values'].get('item') == crop['price_item'] and int(r['values'].get('year', 0)) <= year], ('year', 'item'))
         price = max(prices, key=lambda r: int(r['values']['year'])) if prices else None
         replacement = None
-        if selected is not None and price is not None:
+        if selected is not None and selected['yield_change_pct_estimate'] is not None and price is not None:
             loss = max(0, -selected['yield_change_pct_estimate']) / 100 * volume
             unit_price = numeric(price['values'].get('contract_price_eur_t'))
             premium = numeric(price['values'].get('replacement_import_premium_frac'))
             replacement = {'volume_basis_t': volume, 'shortfall_t_estimate': loss, 'incremental_import_cost_eur_estimate': loss * unit_price * premium, 'contract_price_eur_t': unit_price, 'replacement_premium_fraction': premium, 'price_year': int(price['values']['year']), 'price_basis': 'latest_supplied_price_at_or_before_selected_year_not_a_future_price_forecast', 'source': price['source']}
         complete_baseline = (p['baseline_years'][1] - p['baseline_years'][0] + 1) * len(expected)
         full = selected is not None and selected['matched_cells'] == len(expected) and selected['baseline_cell_years_included'] == complete_baseline and not unidentified
-        return {'dataset_id': self.ds, 'method_version': 'navigator-monthly-exposure-prototype-crop-sensitivity-v1', 'status': ('illustrative_model_requires_review' if full else 'partial_coverage') if selected else 'insufficient_data', 'physical_scenario': physical_scenario, 'weather_scenario_used': 'historical' if year <= 2026 else physical_scenario, 'year': year, 'crop_id': crop_id, 'crop': crop, 'selected': selected, 'replacement': replacement, 'timeline': timeline, 'grid_cells': grid, 'sourcing_hedge': hedge, 'coverage': {'expected_region_cells': len(expected), 'included_region_cells': selected['matched_cells'] if selected else 0, 'unidentified_grid_records': unidentified, 'expected_baseline_cell_years': complete_baseline, 'included_baseline_cell_years': selected['baseline_cell_years_included'] if selected else 0}, 'model': self.model, 'trained_or_validated_forecast': False, 'issues': cube['issues'] + price_issues, 'sources': [table_source(self.store, self.ds, 'climate_monthly', baseline_years=p['baseline_years'], selected_year=year, months=p['months']), table_source(self.store, self.ds, 'climate_grid_cells')], 'limitations': ['Climate indicators use complete monthly seasons and equal cell weights.', '2025–2026 use historical weather identically across SSP choices; scenario weather starts in 2027.', 'Yield response is an illustrative prototype coefficient sensitivity to summer warming, not a fitted or validated crop forecast.', 'Hot days and PET-minus-precipitation are exposure indicators; the latter is not SPEI or measured water availability.', 'Replacement cost includes only the assumed shortfall premium on supplied historical prices, not a validated total business loss.']}
+        return {'dataset_id': self.ds, 'method_version': 'navigator-supplied-monthly-exposure-v2', 'status': ('calculated_exposure' if full else 'partial_coverage') if selected else 'insufficient_data', 'physical_scenario': physical_scenario, 'weather_scenario_used': 'historical' if year <= 2026 else physical_scenario, 'year': year, 'crop_id': crop_id, 'crop': crop, 'selected': selected, 'replacement': replacement, 'price_context': price, 'timeline': timeline, 'grid_cells': grid, 'sourcing_hedge': hedge, 'coverage': {'expected_region_cells': len(expected), 'included_region_cells': selected['matched_cells'] if selected else 0, 'unidentified_grid_records': unidentified, 'expected_baseline_cell_years': complete_baseline, 'included_baseline_cell_years': selected['baseline_cell_years_included'] if selected else 0}, 'model': self.model, 'trained_or_validated_forecast': False, 'issues': cube['issues'] + price_issues, 'sources': [table_source(self.store, self.ds, 'climate_monthly', baseline_years=p['baseline_years'], selected_year=year, months=p['months']), table_source(self.store, self.ds, 'climate_grid_cells')], 'limitations': ['Climate indicators use complete monthly seasons and equal cell weights.', '2025–2026 use historical weather identically across SSP choices; scenario weather starts in 2027.', 'Yield forecasts and replacement losses are unavailable: no fitted or validated crop-response model is supplied.', 'Hot days and PET-minus-precipitation are exposure indicators; the latter is not SPEI or measured water availability.', 'Price context is the latest supplied record at or before the selected year; it is not a future-price or business-loss forecast.']}
