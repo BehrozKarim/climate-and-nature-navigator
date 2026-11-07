@@ -44,7 +44,7 @@ export class NavigatorApi {
   async datasetRequest(path, options) {
     return this.request(`/navigator/datasets/${encodeURIComponent(await this.dataset())}/${path}`, options);
   }
-  inventory(year = 2024, restated = false) { return this.calculate('inventory', { year, restated }); }
+  inventory(year = 2024, restated = false, options) { return this.calculate('inventory', { year, restated }, options); }
   preview(screen, inputs, options) { return this.calculate(`${screen}/preview`, inputs, options); }
   save(screen, inputs) { return this.calculate(`${screen}/runs`, inputs); }
   freightCatalog(options) { return this.datasetRequest('freight/catalog', options); }
