@@ -1,5 +1,6 @@
 import React from 'react';
 import {sourceTrace} from '../lib/api.js';
+import {Evidence} from './Analysis.jsx';
 
 const modeNames = {'truck':'Dry truck','truck-reefer':'Refrigerated truck','truck-hvo':'Truck · HVO100','rail':'Rail','ship-bulk':'Bulk ship','ship-reefer':'Refrigerated ship','ropax':'Ferry'};
 const kinds = {run:'Saved assessment',quality_finding:'Data quality check',structural_event:'Boundary change',published_inventory:'Published inventory'};
@@ -14,7 +15,7 @@ const routeOf = (review,bundle) => bundle?.run?.output?.lines?.filter(line => li
 export function reviewTitle(review,bundle) {
   const legs = routeOf(review,bundle);
   if (legs.length && legs[0].origin && legs.at(-1).destination) return `${legs[0].origin} → ${legs.at(-1).destination} · freight assessment`;
-  return {'navigator_trip calculation':'Freight assessment','navigator_freight calculation':'Freight inventory assessment','navigator_climate calculation':'Climate risk assessment','navigator_nature calculation':'Nature impact assessment','navigator_pathways calculation':'Decarbonisation pathway assessment','navigator_overview calculation':'Scenario assessment'}[review.title] || review.title;
+  return {'navigator_trip calculation':'Freight assessment','freight calculation':'Freight inventory assessment','navigator_freight calculation':'Freight inventory assessment','navigator_climate calculation':'Climate exposure assessment','navigator_nature calculation':'Nature source assessment','navigator_pathway calculation':'Decarbonisation pathway assessment','navigator_pathways calculation':'Decarbonisation pathway assessment','navigator_overview calculation':'Scenario assessment'}[review.title] || review.title;
 }
 export function reviewQueueLabel(review) {
   const inputs = inputsOf(review);
@@ -98,6 +99,8 @@ export default function ReviewEvidence({review,bundle,records=[],sourceErrors=[]
     </> : run ? <>
       <h3 className="h-d">Saved calculation</h3><h4>Inputs</h4><Table values={run.inputs}/>
       <h4>Result summary</h4><Table values={Object.fromEntries(Object.entries(output).filter(([key,value]) => !['dataset_id','method_version','model'].includes(key) && (value == null || typeof value !== 'object')))}/>
+      {['baseline','selected','selected_year','selection','costs','coverage'].filter(key => output[key] && typeof output[key] === 'object').map(key => <div key={key}><h4>{fieldLabel(key)}</h4><Table values={output[key]}/></div>)}
+      <Evidence data={output} onTrace={onTrace} extraSources={[output.baseline?.source,output.inventory?.source,...(output.scenario?.sources||[])]}/>
     </> : null}
     {Array.isArray(output?.issues) && output.issues.length > 0 && <div role="note"><h3 className="h-d">Calculation issues</h3><ul>{output.issues.slice(0,25).map((issue,index) => <li key={index}>{typeof issue === 'string' ? issue : issue.message || JSON.stringify(issue)}</li>)}</ul></div>}
     {records.length > 0 && <div><h3 className="h-d">{trip ? 'Referenced source records' : 'Original source values'}</h3><div className="review-records">{records.map(record => <details key={`${record.source.table}:${record.source.row_number}`} open={!run}>

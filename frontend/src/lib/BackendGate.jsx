@@ -14,8 +14,8 @@ export default function BackendGate({ children }) {
   }, []);
   if (state === 'ready') return children;
   return <main style={{ padding: 32, maxWidth: 720, margin: '10vh auto', fontFamily: 'var(--f-ui)' }}>
-    <h1 className="h-d">{state === 'loading' ? 'Opening Navigator…' : 'Backend unavailable'}</h1>
+    <h1 className="h-d">{state === 'loading' ? 'Opening Navigator...' : 'Backend unavailable'}</h1>
     <p role="status">{state === 'loading' ? 'Loading the selected dataset and review queue.' : error}</p>
-    {state === 'error' && <><button className="btn btn-p" onClick={() => window.location.reload()}>Retry</button>{' '}<a href="/?mode=reference">Open the v3 design preview</a></>}
+    {state === 'error' && <><button className="btn btn-p" onClick={() => window.location.reload()}>Retry</button></>}
   </main>;
 }

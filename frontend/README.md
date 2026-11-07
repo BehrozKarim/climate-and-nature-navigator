@@ -1,10 +1,10 @@
 # Navigator frontend
 
-For Solana receipts: save a Freight assessment for review, approve it with a note, then use **Sign evidence receipt** in Review with a Devnet-funded compatible wallet. See [setup and verification](../backend/docs/solana-receipts.md). Wallet keys stay in the wallet.
+React/Vite interface for the supplied synthetic challenge dataset. All seven screens use the backend. There is no offline design-data mode, sample-result fallback, bundled demo dataset or prefilled design journey. Existing links containing `?mode=reference` also use the backend.
 
-React/Vite implementation of `Navigator app (interactive)-html-v3`. All seven screens use the reference's colors, fonts, spacing, SVG charts, map geometry, motion and controls. The app uses ordinary React components; it does not load the design tool's runtime or templates.
+## Run locally
 
-## Run
+Start the backend using [its README](../backend/README.md), import the local challenge package, then:
 
 ```powershell
 cd frontend
@@ -12,62 +12,42 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/`. The default app uses the backend for its connected workflows and live AI chat. Start the backend first using its README. An explicit `?mode=reference` opens the design preview with sample screen data. Ask always calls the backend, including in this preview; it has no canned chatbot. The challenge brief remains a local, ignored input.
+Open `http://127.0.0.1:5173/`. Vite proxies `/v1` and `/health` to `http://127.0.0.1:8000`; set `NAVIGATOR_BACKEND_URL` before starting Vite to change that target. A deployed frontend needs an equivalent authenticated reverse proxy. Keys remain in the backend environment, never in a Vite build.
 
-Use the rail to navigate, or link directly to `/#freight`, `/#inventory`, `/#pathways`, `/#climate`, `/#nature`, `/#review`. Ctrl/Cmd+K opens search; Escape closes drawers. Pathway start handles support arrow keys as well as dragging. Maps support pan, zoom, picking and layer controls.
+The newest imported immutable snapshot supplies the data. Backend/data failures show an error and Retry; they never substitute example values. Raw challenge files and local secrets stay ignored.
 
-In Freight, choose **Your route** to select From and To from the supported location menus. They contain all 20 configured places, grouped geographically, and support native keyboard type-ahead. Connected mode loads the live backend catalogue; design mode uses a matching offline copy. Each leg shows its mass × distance × factor calculation. HVO and rail substitutions apply to dry truck legs; refrigerated legs retain their existing modes. Alternative routes and their operational feasibility remain illustrative.
+## Screen connections
 
-The supplied pathway action grid exceeds a narrow phone viewport. That reference behavior is retained for design fidelity; a contained horizontal scroll treatment or stacked mobile layout is a proposed follow-up, not an applied redesign.
-
-## Backend connections
-
-Start the service using [the backend instructions](../backend/README.md), then import the local challenge package once:
-
-```powershell
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/v1/datasets/import -ContentType application/json -Body '{}'
-```
-
-Open `http://127.0.0.1:5173/#inventory` to use the connected workflows (`?mode=backend` remains supported). It selects the most recently imported immutable snapshot. Missing datasets and connection failures show an error and retry action; they do not silently substitute sample values. Only `?mode=reference` opts into the offline design demo.
-
-| Workflow | Current connection |
+| Screen | Data and behavior |
 | --- | --- |
-| Emissions | Snapshot-backed scope values, both history charts, available years, restatements, feed counts, supplier counts/accessibility/evidence, deterministic findings and persisted dispositions; unavailable and partial supplier coverage are explicit |
-| Freight | Live location catalogue, route lookup, debounced shipment/alternative previews, per-leg arithmetic, factor/source trace and coordinate handoff; annual shipment chart retains the v3 sample |
-| Review | Human-readable assessment titles, saved results/inputs, per-leg arithmetic, original source rows, blockers, selected-item review history, evidence downloads, version checks and demo-review/receipt controls |
-| Search | Snapshot entity search and original row evidence |
-| Ask | Persistent Gemini/backend conversations in both views, ElevenLabs voice turns, neutral introductions/capability replies, document citations, route/cargo context, explicit provider errors and redirects for coding/unrelated requests |
-| Overview, Pathways, Climate risk, Nature | Complete interactive v3 design screens; live scenario data adapters are still to be connected |
+| Overview | Backend composition of published inventory, default pathway, climate exposure, contract-parcel context and review state; registered farm/site coordinates from the snapshot |
+| Emissions | Supplied published history and draft reports, supplier coverage, actual source references and deterministic checks; year changes preserve charts and focus |
+| Freight | Recorded annual shipment arithmetic and fuel sensitivity; separate user-defined route estimates with imported factors, explicit distance assumptions and optional manual mode/distance changes |
+| Pathways | All supplied catalogue actions, backend overlap/scope checks, manual/all/greedy selection, user-selected start-year overrides, annual trajectory and costs |
+| Climate | Complete monthly weather seasons, historical baseline coverage, scenario exposure timelines, grid coordinates and historical price context |
+| Nature | Selected-year registered contract parcels, catchment ecological classes, soil-test coverage, monitored outlet records and indicative import-origin context |
+| Review | Immutable saved inputs/results, source inspection/downloads, analyst notes and audit history; approved unblocked calculations can prepare signed Devnet evidence receipts |
 
-The connected view labels its remaining sample content. Published source context is distinct from a local demo approval. No owner notification is sent. Routes are illustrative estimates. Backend review actions require a note and use the declared identity `Local demo analyst`; they do not grant production approval.
+Every analytical screen exposes its source files, filters, hashes, method and limitations, and can save an assessment for Review. Preview calculations do not persist runs. Changing scenario, horizon, crop, parcel year, action selection or shipment inputs calls the relevant backend endpoint. Requests are cancelled when superseded; stale responses do not replace newer selections.
 
-Emissions year bars reuse the loaded snapshot history and keep the screen, chart nodes and keyboard focus in place. Restated responses and selected drafts are cached separately; uncached requests show a small status message and retain the explicitly labelled previous selection until they finish. Retry preserves the screen, superseded requests are cancelled, and saving a finding disposition clears cached responses.
+## What the numbers mean
 
-**Data sources** lists references used by this page: published inventory/history, draft checks, supplier coverage and boundary context. Each card shows its filename, full-file row count, purpose and import status. Inspect source resolves the referenced original rows and shows the snapshot hash; supplier coverage uses table-level provenance. These reported scope totals are not reconstructed from operational activity files. Imported status and a matching file hash do not establish that the underlying figures have been independently validated.
+The challenge package is a synthetic twin, calibrated to public figures and supplied samples. It is not real operational company data. Published totals are reported context, not a reconstructed full inventory or local approval.
 
-Vite proxies `/v1` and `/health` to `http://127.0.0.1:8000`, so browser requests use the frontend origin. Set `NAVIGATOR_BACKEND_URL` before starting Vite to use another local service. For deployment, configure an equivalent reverse proxy. The optional API token belongs in an authenticated runtime integration; never bake a server token into a Vite build or commit credentials.
+Pathway quantities are the estimates in `decarbonisation_levers.csv`, not frontend mock values. Ramp interpretation, fixed activity, continuing operation and conservative overlap groups are explicit backend assumptions. Annual emissions can plateau after all selected measures reach full effect; repeatedly subtracting the same annual saving would manufacture reductions. The target curve is illustrative and has not established SBTi/FLAG compliance. Incomplete actions are unavailable; data/structural actions do not create physical abatement.
 
-## What Review is for
+The design reference's crop-response coefficients, fictitious fitted-yield accuracy/confidence bands, per-hectare nutrient coefficients and mitigation sliders were removed. Climate shows weather exposure, not a trained yield or financial-loss forecast. Nature shows source context, not unsupported company-attributed nutrient loads or calibrated SBTN priority scores. Those outputs require fitted/calibrated models with evidence before they can return.
 
-Review is the evidence and decision queue for saved calculations, source-data problems and organisational-boundary events. An analyst checks the result and its evidence, records a note, and approves the demo assessment or requests changes. Published inventory context is informational; blocking source issues require correction and a new assessment. Changing shipment inputs means returning to Freight and saving a new calculation.
+Recorded shipments have tonnes, kilometres, modes and reference documents, but no origin/destination coordinates. Their annual totals are calculated from their rows. The separate route calculator accepts user choices and coordinate-based estimates; it does not reconstruct missing shipment journeys or verify railway/ferry availability. No automatic “Rail + ship” alternative is assumed. Source-library HVO sensitivity applies only to eligible ambient trucks; refrigerated trucks retain their supplied factors.
 
-The connected view loads the selected review's existing backend export and original source rows. Freight items show the route, cargo mass, distance, saved emissions, per-leg mass × distance × factor arithmetic, factor version/source and distance limitations. Source findings show the reported values that caused the problem. Published inventory and boundary events show their original records. Recorded review notes and the audit trail belong to the selected item. Missing source values remain unavailable.
+Maps use source coordinates. Parcel dots are registered locations, not surveyed parcel/catchment polygons. Missing data remains unavailable; a hash match establishes file identity, not scientific validation.
 
-Evidence requests are bound to the selected item, revision and dataset; changing selection cancels stale requests. Approval stays unavailable until that evidence has loaded successfully. The display does not rewrite saved calculations or frozen Solana receipt bundles. **Download current review data** exports the current review; use the receipt panel's separate **Download frozen bundle** for signed-file verification. The original reference-mode mockup retains its sample summaries.
+## Ask and voice
 
-## Voice in Ask
+Ask uses backend Gemini conversations and source-linked calculations. Neutral introductions are supported; coding/unrelated requests receive scope guidance. Configure Gemini and ElevenLabs in `backend/.env` using the backend instructions. Select **Talk to Navigator** to start turn-based microphone input and spoken replies; Interrupt and Stop voice remain available. Closing Ask or hiding the tab stops microphone capture/playback. Voice and typed chat share the same grounding and scope rules.
 
-Configure ElevenLabs using the backend README, open Ask and select **Talk to Navigator**. After microphone permission, speak naturally and pause. Navigator displays your transcript, generates its normal grounded Gemini reply, speaks it with ElevenLabs and listens for the next turn. **Send now** submits a turn manually; **Interrupt** stops speech and listens again; **Stop voice** returns to typing. Closing Ask or hiding the tab ends microphone capture and playback. Audio starts only after the user chooses Talk.
+## Verification
 
-Voice uses browser MediaRecorder and Web Audio on HTTPS/localhost. Microphone tracks are muted during processing/playback to avoid transcribing Navigator's own reply. Unsupported browsers, denied permission and provider errors leave typed chat usable. Speech requests use the same in-memory API token as other backend calls; ElevenLabs/Gemini credentials stay on the server. Voice also works in reference mode, using the live backend conversation rather than the sample screen values.
+`npm run build` creates `dist/`. For this integration, verification uses Python compilation, actual API outputs, original CSV reconciliation and live browser interaction across all screens. No unit tests are written or run without an explicit user request.
 
-## Checks
-
-```powershell
-npm test
-npm run build
-```
-
-Tests cover API errors, preview-only requests, empty datasets, stale-write conflicts, coordinate order and rendering all seven screens without the design runtime. `npm run build` creates `dist/`; `npm run preview` serves the production build for design inspection. API proxying is configured for development; a production host needs its own proxy.
-
-`public/demo/` contains only the three compact display fixtures supplied with the v3 mockup. These are required application assets, not the raw challenge dataset. The raw CSV/Parquet package, source documents, ZIP and old UI stay ignored at the repository root. `public/vendor/` retains the supplied map renderer and Three.js bundle, with its MIT license.
+See [the integration handoff](../backend/docs/frontend-source-integration.md) for assumptions and verification details. Production wallet signing/finality remains a separate manual acceptance step; the receipt proves association with frozen bytes, not scientific correctness.
