@@ -17,6 +17,7 @@ from .decisions import DecisionService, Conflict
 from .freight import calculate_freight, purchase_coverage
 from .storage import Store
 from .navigator_api import create_navigator_router
+from .voice import create_voice_router
 
 
 PageLimit = Annotated[int, Query(ge=1, le=500)]
@@ -186,5 +187,6 @@ def create_app(settings=None):
         return DecisionService(store()).export(decision_id, version)
 
     api.include_router(create_navigator_router(settings, store))
+    api.include_router(create_voice_router(settings, store))
     app.include_router(api)
     return app

@@ -96,6 +96,33 @@ Gemini classifies each request as neutral conversation, a source-based answer, o
 
 Finally, run `npm run dev` in `frontend/` and open `http://127.0.0.1:5173/` to test Ask. Refresh the page after importing a different snapshot. Chat recognizes supported origin/destination questions and an explicit cargo mass, then supplies read-only RouteService calculations and factor/model provenance to Gemini. It never treats those coordinate-based route estimates as verified driving distances. Greetings may have no citations; factual answers require cited evidence. Unknown modes or missing route inputs require clarification. No chat request changes the inventory or approves a record.
 
+### Voice conversation with ElevenLabs
+
+Add the settings from [`voice.env.example`](voice.env.example) to the ignored `backend/.env`, then restart the backend:
+
+```dotenv
+ELEVENLABS_API_KEY=your_key
+ELEVENLABS_VOICE_ID=JBFqnCBsd6RMkjVDRZzb
+ELEVENLABS_STT_MODEL=scribe_v2
+ELEVENLABS_TTS_MODEL=eleven_flash_v2_5
+```
+
+Only the key is required; the voice/model values above are defaults. The key needs Speech to Text and Text to Speech permissions and available credits. Choose a voice available to your account when overriding the default. Existing Gemini configuration is still required. No provider key is sent to the browser.
+
+In Ask, choose **Talk to Navigator**, allow microphone access and speak. The browser detects a pause, sends the turn to ElevenLabs speech recognition, posts the transcript to the existing Gemini conversation, and reads the persisted assistant reply with ElevenLabs TTS. Written replies and citations remain in the thread. **Send now** ends a quiet/long turn manually; **Interrupt** stops playback and listens again; **Stop voice** ends capture and returns to typing. Closing the drawer or hiding the tab also stops capture and playback. Each recording is limited to 30 seconds in the browser and 6 MiB at the API; 15 seconds without detected speech stops the session. This is continuous, turn-based voice with manual interruption, not simultaneous full-duplex audio.
+
+The last six messages provide bounded conversation context. Clear follow-ups can reuse the previous route's endpoints and recompute an explicitly supplied new cargo mass through RouteService; source citations remain required. Raw microphone audio is forwarded in memory and is not saved by this backend. Transcripts and answers persist as normal chat messages. Audio and reply text are processed by ElevenLabs, and conversation text/evidence by the configured LLM; provider retention policies apply.
+
+Voice works on HTTPS or localhost in browsers with MediaRecorder, Web Audio and microphone access. Missing configuration, denied permission, provider failures and empty transcripts produce visible errors while typed chat remains available. The backend returns safe provider status messages without exposing keys or raw provider error bodies. The optional bearer-token protection also covers every voice endpoint.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /v1/navigator/voice/status` | Capability/configuration status, without provider credentials |
+| `POST /v1/navigator/voice/transcriptions` | Raw audio body with an `audio/*` Content-Type; returns transcript text |
+| `POST /v1/navigator/conversations/{id}/speech?expected_version=N` | MP3 for the latest saved assistant reply; stale versions return 409 |
+
+Speech playback accepts an existing conversation/version, rather than arbitrary text, so it reads the same scoped answer shown in Ask. Provider API details: [speech recognition](https://elevenlabs.io/docs/api-reference/speech-to-text/convert), [speech streaming](https://elevenlabs.io/docs/api-reference/text-to-speech/stream).
+
 | Endpoint | Purpose |
 | --- | --- |
 | `POST /v1/datasets/import` | Import/reuse a snapshot |

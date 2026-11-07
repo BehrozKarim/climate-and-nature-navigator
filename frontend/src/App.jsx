@@ -2,6 +2,7 @@ import React from 'react';
 import { api, backendMode, sourceTrace } from './lib/api.js';
 import { installNavigation, syncDialogFocus } from './lib/interactions.js';
 import { ConnectedInventory, ConnectedReview } from './lib/connected-screens.jsx';
+import VoiceChat from './lib/VoiceChat.jsx';
 import Overview from './screens/Overview.jsx';
 import Inventory from './screens/Inventory.jsx';
 import Freight from './screens/Freight.jsx';
@@ -104,7 +105,7 @@ export default class Main extends React.Component {
     if (this._asking) return;
     this._asking = true;
     const pending = { role: 'ai', text: 'Retrieving sources…', shown: 100, cites: [] };
-    this.setState(st => ({ thread: [...st.thread, { role:'user', text:q }, pending], askInput:'', ask:true, palette:false, trace:null }));
+    this.setState(st => ({ thread: [...st.thread, { role:'user', text:q }, pending], askInput:'', ask:true, asking:true, palette:false, trace:null }));
     try {
       const messages = await api.ask(q);
       if (!this._dead) this.setState({ thread: messages.map(m => {
@@ -114,13 +115,15 @@ export default class Main extends React.Component {
         return { role: m.role === 'assistant' ? 'ai' : 'user', text, shown:text.length,
           cites:(m.citations || []).map(c => [c.path, { title:c.path, value:c.source_kind === 'model' ? 'Model parameters' : c.line_start ? 'Lines ' + c.line_start + '–' + c.line_end : 'Source', unit:'', status:'draft', note:c.excerpt, steps:[{k:'Source',t:c.path,id:c.citation_id,d:c.file_sha256 || c.model?.config_sha256 || c.source?.file_sha256 || ''}] }]) };
       }) });
+      return messages.filter(message => message.role === 'assistant').at(-1);
     } catch(e) {
       if (!this._dead) this.setState(st => ({ thread: st.thread.map(m => m === pending ? { ...m, text:e.message, shown:e.message.length } : m) }));
-    } finally { this._asking = false; }
+      throw e;
+    } finally { this._asking = false; if (!this._dead) this.setState({asking:false}); }
   }
   ask(q) {
     const text = (q || '').trim();
-    if (text) this.askBackend(text);
+    if (text && !this.state.voiceActive) this.askBackend(text).catch(() => {});
   }
   palGroups() {
     const s = this;
@@ -416,7 +419,7 @@ export default class Main extends React.Component {
               {v.threadEmpty ? <>
                 <div className={"rise"} style={{"display": "flex", "flexDirection": "column", "gap": "8px"}}>
                   {(v.suggest || []).map((sg, index0) => <React.Fragment key={index0}>
-                    <button type={"button"} className={"card lift"} onClick={sg.go} style={{"display": "flex", "alignItems": "center", "gap": "12px", "padding": "14px 16px", "textAlign": "left", "fontSize": "14px", "fontWeight": "600", "color": "var(--ink)"}}>
+                    <button type={"button"} className={"card lift"} onClick={sg.go} disabled={this.state.voiceActive || this.state.asking} style={{"display": "flex", "alignItems": "center", "gap": "12px", "padding": "14px 16px", "textAlign": "left", "fontSize": "14px", "fontWeight": "600", "color": "var(--ink)"}}>
                       <span style={{"flex": "1"}}>
                         {sg.q}
                       </span>
@@ -460,19 +463,20 @@ export default class Main extends React.Component {
               {v.showMore ? <>
                 <div style={{"display": "flex", "flexWrap": "wrap", "gap": "8px"}}>
                   {(v.suggestRest || []).map((sg, index0) => <React.Fragment key={index0}>
-                    <button type={"button"} className={"chipbtn"} onClick={sg.go} style={{"fontSize": "12.5px"}}>
+                    <button type={"button"} className={"chipbtn"} onClick={sg.go} disabled={this.state.voiceActive || this.state.asking} style={{"fontSize": "12.5px"}}>
                       {sg.q}
                     </button>
                   </React.Fragment>)}
                 </div>
               </> : null}
             </div>
+            <VoiceChat onQuestion={question => this.askBackend(question)} onActive={active => { if (!this._dead) this.setState({voiceActive:active}); }} disabled={this.state.asking}/>
             <form onSubmit={v.submitAsk} style={{"display": "flex", "gap": "8px", "padding": "14px 16px 16px", "borderTop": "1px solid var(--line)"}}>
               <label htmlFor={"askq"} className={"sr"}>
                 {"Your question"}
               </label>
-              <input id={"askq"} className={"field"} value={v.askInput} onChange={v.onAskInput} autoComplete={"off"} placeholder={"Ask a question"} />
-              <button type={"submit"} className={"btn btn-p"} aria-label={"Send"} style={{"width": "48px", "padding": "0", "flex": "none"}}>
+              <input id={"askq"} className={"field"} value={v.askInput} onChange={v.onAskInput} disabled={this.state.voiceActive || this.state.asking} autoComplete={"off"} placeholder={"Ask a question"} />
+              <button type={"submit"} className={"btn btn-p"} aria-label={"Send"} disabled={this.state.voiceActive || this.state.asking} style={{"width": "48px", "padding": "0", "flex": "none"}}>
                 <svg width={"18"} height={"18"} viewBox={"0 0 24 24"} fill={"none"} stroke={"currentColor"} strokeWidth={"2"} strokeLinejoin={"round"} aria-hidden={"true"}>
                   <path d={"M4 12l16-8-6 16-2.5-6.5L4 12Z"}>
                   </path>
