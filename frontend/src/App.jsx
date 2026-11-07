@@ -72,7 +72,7 @@ export default class Main extends React.Component {
   async askBackend(q) {
     if (this._asking) return;
     this._asking = true;
-    const pending = { role: 'ai', text: 'Retrieving sources and asking AI… Temporary connection failures are retried automatically.', shown: 150, cites: [] };
+    const pending = { role: 'ai', text: 'Thinking…', shown: 20, cites: [] };
     this.setState(st => ({ thread: [...st.thread, { role:'user', text:q }, pending], askInput:'', ask:true, asking:true, palette:false, trace:null }));
     try {
       const messages = await api.ask(q);
