@@ -76,6 +76,7 @@ export default class Review extends React.Component {
     const v = this.viewModel();
     return <>
       <div style={{"display": "flex", "flexDirection": "column", "gap": "20px", "fontFamily": "var(--f-ui)", "color": "var(--ink)", "background": "var(--ground)"}}>
+        {v.intro && <p style={{margin:0,fontSize:14,lineHeight:1.5,color:'var(--muted)'}}>{v.intro}</p>}
         <div role={"group"} aria-label={"Filter the queue"} style={{"display": "flex", "flexWrap": "wrap", "gap": "8px"}}>
           {(v.filters || []).map((f, index0) => <React.Fragment key={index0}>
             <button type={"button"} className={"chipbtn"} aria-pressed={f.on} onClick={f.pick}>
@@ -118,7 +119,7 @@ export default class Review extends React.Component {
                       {v.d.st}
                     </span>
                     <span className={"mono"} style={{"fontSize": "12px", "color": "var(--muted)"}}>
-                      {String(v.d.id) + " · version " + String(v.d.ver)}
+                      {String(v.d.referenceLabel || v.d.id) + " · version " + String(v.d.ver)}
                     </span>
                   </div>
                   <h2 className={"h-d"} style={{"fontSize": "24px", "fontWeight": "600", "marginTop": "10px", "lineHeight": "1.2"}}>
@@ -137,6 +138,7 @@ export default class Review extends React.Component {
                   </div>
                 </div>
               </div>
+              {this.assessmentPanel?.()}
               <div>
                 <div className={"eyebrow"} style={{"fontSize": "11px", "marginBottom": "10px"}}>
                   {"Where it comes from"}
@@ -201,7 +203,7 @@ export default class Review extends React.Component {
                   </div>
                 </> : null}
                 <div style={{"display": "flex", "flexWrap": "wrap", "gap": "8px"}}>
-                  <button type={"button"} className={"btn btn-p"} onClick={v.approve} disabled={v.d.st === 'Blocked' || v.d.st === 'Published source'}>
+                  <button type={"button"} className={"btn btn-p"} onClick={v.approve} disabled={v.d.st === 'Blocked' || v.d.st === 'Published source' || v.d.approveDisabled}>
                     {"Approve"}
                   </button>
                   <button type={"button"} className={"btn"} onClick={v.reqChange}>
@@ -221,7 +223,7 @@ export default class Review extends React.Component {
         <section className={"card rise"} aria-label={"Audit trail"} style={{"--i": "2", "padding": "20px", "display": "flex", "flexDirection": "column", "gap": "12px"}}>
           <div style={{"display": "flex", "flexWrap": "wrap", "justifyContent": "space-between", "gap": "10px", "alignItems": "baseline"}}>
             <h2 className={"h-d"} style={{"fontSize": "19px", "fontWeight": "600"}}>
-              {"Audit trail"}
+              {v.auditTitle || "Audit trail"}
             </h2>
           </div>
           <ol style={{"listStyle": "none", "margin": "0", "padding": "0", "display": "flex", "flexDirection": "column"}}>
