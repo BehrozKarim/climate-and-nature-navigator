@@ -16,7 +16,7 @@ python -m venv .venv
 
 Open **http://127.0.0.1:8000/docs** for the interactive API, **/redoc** for reference documentation and **/health** for status. The default database is `var/weatherlens.sqlite3`. No cloud account or model API key is required for the local workflow.
 
-The supplied dataset and `new documents` folder are auto-detected next to the backend. If you move them, set `WEATHERLENS_DATASET_ROOT` to the directory containing `START_HERE.md` and `data/`, and `WEATHERLENS_DOCUMENT_ROOT` to the documents directory. `.env.example` documents the settings; it is a template and is not automatically loaded. Set environment variables before launching the service.
+The supplied dataset and `new documents` folder are auto-detected next to the backend. If you move them, set `WEATHERLENS_DATASET_ROOT` to the directory containing `START_HERE.md` and `data/`, and `WEATHERLENS_DOCUMENT_ROOT` to the documents directory. The `python -m weatherlens_backend` entry point automatically loads `backend/.env`. Explicit terminal environment variables take precedence. Restart the backend after editing `.env`.
 
 The verification run has already populated the local database with the supplied package. On a fresh database, call `POST /v1/datasets/import` with `{}`. The endpoint imports only server-configured paths, not a path supplied by the browser. Repeating an identical import reuses its dataset ID.
 
@@ -61,7 +61,7 @@ The existing explanation adapter can use Google's [OpenAI-compatible Gemini endp
 - `WEATHERLENS_LLM_API_KEY`: your Gemini API key, kept locally on the server
 - `WEATHERLENS_LLM_MODEL`: a compatible Gemini model ID available to your key
 
-The settings file reads the process environment; `.env.example` and an arbitrary `.env` file are not automatically loaded. Use `?mode=backend` in the frontend to invoke this adapter. The default design-preview chatbot uses predefined demo responses regardless of the backend key configuration. No live Gemini request has been verified without a supplied key.
+The normal backend entry point and local test command automatically load `backend/.env`; `.env.example` is only a template. The frontend uses the backend by default. Only `?mode=reference` uses predefined design-preview responses. If a terminal contains older LLM variables, those override `.env`; launch from a fresh terminal to use the file's values.
 
 Retrieval currently ranks real document excerpts using lexical matching. It is not embedding/vector retrieval. With a provider configured, the selected excerpts and optional saved-run context go to the model, which must return supported citation IDs. Without a provider, or on invalid output, it returns excerpts with an explicit extractive label. Citation-ID validation does not prove the factual correctness of every generated sentence.
 
@@ -74,14 +74,10 @@ New-Item -ItemType Directory -Force -Path '..\new documents' | Out-Null
 Copy-Item -LiteralPath '..\Apetit_x_SinceAI_2026_Challenge_Brief_EN_FINAL_2026-11-04.md' -Destination '..\new documents\'
 ```
 
-In the terminal that will run the backend, configure Gemini. The key prompt does not put the key in your command history. `--list-models` queries your configured provider, so choose a text-generation model available to your key rather than relying on a hardcoded model name.
+Set the three LLM fields in `backend/.env`, using the Gemini base URL above, your key and an available text model ID. The following commands list models and start the backend using that file. The key stays on the backend; it is not sent to the browser.
 
 ```powershell
-$env:WEATHERLENS_LLM_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai'
-$env:WEATHERLENS_LLM_API_KEY = [System.Net.NetworkCredential]::new('', (Read-Host 'Gemini API key' -AsSecureString)).Password
 .\.venv\Scripts\python.exe scripts/test_llm.py --list-models
-$env:WEATHERLENS_LLM_MODEL = Read-Host 'Gemini text model ID from the list'
-$env:WEATHERLENS_DOCUMENT_ROOT = (Resolve-Path '..\new documents').Path
 .\.venv\Scripts\python.exe -m weatherlens_backend
 ```
 
@@ -92,11 +88,11 @@ Leave that terminal running. In a **second terminal**, from `backend/`, import/r
 .\.venv\Scripts\python.exe scripts/test_llm.py
 ```
 
-The retrieval check must find the brief and never calls the model. The generation check succeeds only when `generation_mode` is `ai_explanation_requires_review`, `provider_status` is `responded`, and the answer includes citations belonging to the selected snapshot. A generic extractive fallback is a failed LLM check, not AI success. Use `--question 'Your specific question'` to test another question. If the API token is enabled, set the same `WEATHERLENS_API_TOKEN` in the second terminal.
+The retrieval check must find the brief and never calls the model. The generation check succeeds only when `generation_mode` is `ai_explanation_requires_review`, `provider_status` is `responded`, and factual answers include citations belonging to the selected snapshot. Simple greetings may have no citations. A generic extractive fallback is a failed LLM check, not AI success. Use `--question 'Your specific question'` to test another question. If the API token is enabled, set the same `WEATHERLENS_API_TOKEN` in the second terminal.
 
-For `not_configured`, restart the backend from the terminal containing all three LLM variables. For `unavailable_or_invalid_output`, verify the provider model ID, key, quota, timeout and JSON response compatibility; the backend deliberately retains source excerpts on provider failure. For `skipped_no_evidence`, verify the imported brief or try a more specific question. `.env` files still need an explicit loader; merely saving one does not configure the running process.
+For `not_configured`, check all three fields in `backend/.env`, check for old terminal variables overriding them, and restart the backend. For `unavailable_or_invalid_output`, the response now includes a safe `provider_error` and, for HTTP errors, `provider_http_status`; check the model/key for 400/401/403, quota for 429, and timeouts or JSON compatibility otherwise. For `skipped_no_evidence`, verify the imported brief or try a more specific question. Saving `.env` does not reconfigure an already-running process.
 
-Finally, run `npm run dev` in `frontend/` and open `http://127.0.0.1:5173/?mode=backend` to test Ask in the app. Refresh the page after importing a different snapshot. The default URL without that query parameter keeps the predefined design-demo answers.
+Finally, run `npm run dev` in `frontend/` and open `http://127.0.0.1:5173/` to test Ask. Refresh the page after importing a different snapshot. Chat recognizes supported origin/destination questions and an explicit cargo mass, then supplies read-only RouteService calculations and factor/model provenance to Gemini. It never treats those coordinate-based route estimates as verified driving distances. Greetings may have no citations; factual answers require cited evidence. Unknown modes or missing route inputs require clarification. No chat request changes the inventory or approves a record.
 
 | Endpoint | Purpose |
 | --- | --- |

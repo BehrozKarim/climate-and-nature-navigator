@@ -123,9 +123,11 @@ export default class Main extends React.Component {
     try {
       const messages = await api.ask(q);
       if (!this._dead) this.setState({ thread: messages.map(m => {
-        const text = m.role === 'assistant' ? (m.generation_mode === 'extractive_not_ai' ? 'Source excerpts (not AI-generated)\n\n' : 'AI explanation · requires review\n\n') + m.text : m.text;
+        const generated = m.generation_mode === 'ai_explanation_requires_review';
+        const label = generated ? `AI · ${m.provider_model || 'Navigator'} · requires review` : `Source response · ${m.provider_error || 'AI generation was not used.'}`;
+        const text = m.role === 'assistant' ? label + '\n\n' + m.text : m.text;
         return { role: m.role === 'assistant' ? 'ai' : 'user', text, shown:text.length,
-          cites:(m.citations || []).map(c => [c.path, { title:c.path, value:'Lines ' + c.line_start + '–' + c.line_end, unit:'', status:'draft', note:c.excerpt, steps:[{k:'Source',t:c.path,id:c.citation_id,d:c.file_sha256}] }]) };
+          cites:(m.citations || []).map(c => [c.path, { title:c.path, value:c.source_kind === 'model' ? 'Model parameters' : c.line_start ? 'Lines ' + c.line_start + '–' + c.line_end : 'Source', unit:'', status:'draft', note:c.excerpt, steps:[{k:'Source',t:c.path,id:c.citation_id,d:c.file_sha256 || c.model?.config_sha256 || c.source?.file_sha256 || ''}] }]) };
       }) });
     } catch(e) {
       if (!this._dead) this.setState(st => ({ thread: st.thread.map(m => m === pending ? { ...m, text:e.message, shown:e.message.length } : m) }));
@@ -418,7 +420,7 @@ export default class Main extends React.Component {
                   {"Ask Navigator"}
                 </h2>
                 <p style={{"margin": "3px 0 0", "fontSize": "13px", "color": "var(--night-muted)"}}>
-                  {"Answers link to their sources."}
+                  {backendMode ? 'Live AI · answers link to sources and calculations.' : 'Design preview · predefined example answers.'}
                 </p>
               </div>
               <button type={"button"} className={"mapbtn"} aria-label={"Close"} onClick={v.closeAsk}>

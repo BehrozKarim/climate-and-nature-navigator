@@ -70,7 +70,10 @@ export class NavigatorApi {
 }
 
 export const api = new NavigatorApi();
-export const backendMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'backend';
+export function usesBackend(search = '') {
+  return new URLSearchParams(search).get('mode') !== 'reference';
+}
+export const backendMode = typeof window !== 'undefined' && usesBackend(window.location.search);
 
 /** Backend route coordinates are latitude/longitude; NavMap uses longitude/latitude. */
 export function routeToMap(leg) {
