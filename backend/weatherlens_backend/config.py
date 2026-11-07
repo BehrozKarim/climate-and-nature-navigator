@@ -7,6 +7,12 @@ BASE = Path(__file__).resolve().parents[1]
 WORKSPACE = BASE.parent
 
 
+def load_environment(path=None):
+    """Load the local backend file at startup; explicit process settings take precedence."""
+    from dotenv import load_dotenv
+    load_dotenv(path or BASE / '.env', override=False)
+
+
 def default_dataset_root() -> Path:
     packages = list((WORKSPACE / 'Apetit_SinceAI2026 _1_').glob('**/START_HERE.md'))
     return packages[0].parent if len(packages) == 1 else WORKSPACE / 'dataset'
