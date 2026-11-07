@@ -20,6 +20,52 @@ Run Entire in the independent `climate-and-nature-navigator` Git checkout contai
 
 On this machine the checkout is `weatherlens-backend/var/publish/climate-and-nature-navigator` relative to the SinceAI workspace. The checksum-verified executables are in `weatherlens-backend/var/tools/entire`, added to the user's PATH. Open a new terminal to load that PATH.
 
+## Team sessions and the connected fork
+
+Observed during the Inventory fix on 2026-11-07:
+
+- `entire status`: enabled for Codex; automatic checkpoint pushing disabled; checkpoints read from `origin`.
+- `entire session list`: one ended local Codex session, last prompt `exit`.
+- `entire checkpoint list` on `main`: zero committed checkpoints. This does not inventory every branch or the hosted service.
+- Graph successfully located `ConnectedInventory`, the Inventory API contract and its callers/dependencies. The query reported no JavaScript parser failures; three minified JSON assets were partial failures in other languages.
+- `origin` is BehrozKarim's GitHub repository. Remote `entire` is the connected `rehanali53` fork. This fix is on local branch `fix/inventory-source-evidence`.
+
+Connecting a fork imports code; it does not capture colleagues' agent conversations. Each colleague must enable Entire for their own agent in their own checkout and share the resulting checkpoints. Syncing upstream code into a fork alone is not evidence that upstream sessions have been shared there. A session started outside this checkout is not proven captured by this checkout's hooks.
+
+Choose one team destination. Either have the original repository owner connect that repository to Entire, or have teammates collaborate through the already connected fork and configure a common checkpoint destination. Each teammate needs access to that destination; Git remotes and local settings are per clone. Inspect captured context before sharing it.
+
+For the connected fork, a teammate can run the following from their checkout after installing the CLI, enabling their supported agent and approving its hooks:
+
+```powershell
+entire configure --local --checkpoint-remote github:rehanali53/climate-and-nature-navigator
+entire configure --local --checkpoint-push-policy manual --skip-push-sessions=false
+entire status
+```
+
+These are setup instructions, not changes performed by this fix. `push_sessions=false` blocks explicit checkpoint uploads too; the second command permits uploads while keeping the manual policy, so a Git push does not send checkpoints automatically. Check that status names the intended destination. Keep manual sharing for the demo: do a real coding task in a captured agent session, commit its code on a feature branch, and inspect the checkpoint:
+
+```powershell
+entire session list
+entire checkpoint list --pending
+# After committing the task:
+entire checkpoint list
+entire checkpoint explain CHECKPOINT_ID
+entire checkpoint list --outgoing
+entire checkpoint push CHECKPOINT_ID
+```
+
+Replace `CHECKPOINT_ID` with the actual ID. The final command is an intentional transcript upload; run it interactively after inspection. CLI 0.13.1 also supports `ID@COMMIT` for a specific inspected version in noninteractive use. Code publication is separate: push the feature branch to the chosen team repository and use its Trail to state the task and review the diff against that intent.
+
+On Entire, a shared session shows the captured prompts, agent responses, tool activity and file changes connected to its checkpoints/commits. Teammates can open the session link during review. A checkpoint must exist and be uploaded before claiming this handoff is demonstrated. No checkpoint or transcript has been uploaded as part of the Inventory fix.
+
+### Challenge demonstration
+
+Use the real Inventory issue: show Graph locating the adapter and API contract, the recorded session explaining why sample evidence was removed, the resulting diff/build, then a teammate's review in a Trail. Demonstrate a new teammate finding the prior decision from the shared context. Brain remains unverified on this machine because its executable was blocked; the project knowledge document is not a substitute for a demonstrated Brain query.
+
+For efficiency evidence, compare the same code-discovery task/model with and without Graph and retain actual token usage, output/context bytes and time. Existing query timing is evidence of Graph use, not a measured percentage saving. Do not present the sponsor's 71% figure as this project's result.
+
+References: [official session-sharing walkthrough](https://entire.com/blog/sharing-sessions-is-the-new-social-coding), [CLI source and checkpoint documentation](https://github.com/entireio/cli).
+
 ## Another machine
 
 Install the official CLI using the instructions at <https://docs.entire.com/installation>. Then, from this repository root:

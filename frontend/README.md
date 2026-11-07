@@ -28,7 +28,7 @@ Open `http://127.0.0.1:5173/?mode=backend#inventory` to use the connected workfl
 
 | Workflow | Current connection |
 | --- | --- |
-| Emissions | Published/draft scope values, restatement selection, feed counts, supplier statistics, deterministic findings and persisted dispositions |
+| Emissions | Snapshot-backed scope values, both history charts, available years, restatements, feed counts, supplier counts/accessibility/evidence, deterministic findings and persisted dispositions; unavailable and partial supplier coverage are explicit |
 | Freight | Backend route lookup, debounced shipment preview, factor/source trace and coordinate handoff; annual shipment chart and alternative-fuel comparisons still use v3 design assumptions |
 | Review | Source-backed queue, filters, declared demo review with notes, version checks, blocked approval protection and persisted audit trail |
 | Search | Snapshot entity search and original row evidence |

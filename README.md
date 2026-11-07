@@ -43,4 +43,4 @@ Scientific sensitivities and route lookups are labelled estimates. Published inv
 
 ### Entire development tools
 
-Navigator uses Entire Graph for local code discovery, with Codex session hooks configured to keep checkpoints local. See the [Entire workflow and capability status](backend/docs/entire-workflow.md) for setup, verification, and the remaining Brain/hosted Trails requirements. These tools are optional for running the backend.
+Navigator uses Entire Graph for code discovery and Codex session hooks for context capture. The [team handoff guide](backend/docs/team-entire-handoff.md) covers push-time checkpoint sharing to the connected fork, Brain decisions and Trail review. Every teammate must enable their own hooks and clone-local sharing policy. See the [Entire workflow and capability status](backend/docs/entire-workflow.md) for observed evidence and limits. These tools are optional for running the app.

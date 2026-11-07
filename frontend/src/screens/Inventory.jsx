@@ -83,7 +83,7 @@ export default class Inventory extends React.Component {
             </React.Fragment>)}
           </div>
           <div style={{"display": "flex", "alignItems": "center", "gap": "12px"}}>
-            <button type={"button"} className={"sw"} aria-pressed={v.restStr} aria-label={"Show restated values after the 2022 grain trade divestment"} onClick={v.toggleRest}>
+            <button type={"button"} className={"sw"} aria-pressed={v.restStr} aria-label={v.restLabel || "Show restated values after the 2022 grain trade divestment"} onClick={v.toggleRest}>
             </button>
             <span style={{"fontSize": "13px", "fontWeight": "600"}}>
               {"Show restated"}
@@ -99,7 +99,7 @@ export default class Inventory extends React.Component {
               </path>
             </svg>
             <span style={{"flex": "1 1 300px", "fontSize": "14px", "fontWeight": "500"}}>
-              {"2025 draft blocked: values are 20× to 17 000× too high. Likely unit errors."}
+              {v.draftMessage || "2025 draft blocked: values are 20× to 17 000× too high. Likely unit errors."}
             </span>
             <button type={"button"} className={"btn"} onClick={v.goReview} style={{"minHeight": "38px", "fontSize": "13px"}}>
               {"Open in review"}
@@ -153,7 +153,7 @@ export default class Inventory extends React.Component {
               </React.Fragment>)}
             </div>
             <span style={{"fontSize": "12px", "color": "var(--muted)"}}>
-              {"t CO₂e · click a year"}
+              {v.historyNote || "t CO₂e · click a year"}
             </span>
           </section>
           <section className={"card rise"} aria-label={"Scope 1 and 2 shift"} style={{"--i": "4", "flex": "1 1 420px", "minWidth": "0", "padding": "20px", "display": "flex", "flexDirection": "column", "gap": "14px"}}>
@@ -192,7 +192,7 @@ export default class Inventory extends React.Component {
               </React.Fragment>)}
             </div>
             <span style={{"fontSize": "12.5px", "color": "var(--muted)"}}>
-              {"Plants switched from bought energy to own boilers (2021, 2023)."}
+              {v.scopeHistoryNote || "Plants switched from bought energy to own boilers (2021, 2023)."}
             </span>
           </section>
         </div>
@@ -287,7 +287,7 @@ export default class Inventory extends React.Component {
               {"Supplier data"}
             </h2>
             <div style={{"display": "flex", "gap": "16px", "alignItems": "center"}}>
-              <svg width={"120"} height={"120"} viewBox={"0 0 120 120"} role={"img"} aria-label={"24 of 86 suppliers provide product carbon footprints"} style={{"flex": "none", "transform": "rotate(-90deg)"}}>
+              <svg width={"120"} height={"120"} viewBox={"0 0 120 120"} role={"img"} aria-label={v.supplierAria || "24 of 86 suppliers provide product carbon footprints"} style={{"flex": "none", "transform": "rotate(-90deg)"}}>
                 <circle cx={"60"} cy={"60"} r={"48"} fill={"none"} stroke={"#EBEFEE"} strokeWidth={"16"}>
                 </circle>
                 <circle cx={"60"} cy={"60"} r={"48"} fill={"none"} stroke={"#5AA9F0"} strokeWidth={"16"} strokeDasharray={v.pcfDash} className={"dash-a"}>
@@ -297,7 +297,7 @@ export default class Inventory extends React.Component {
                 <span className={"num"} style={{"fontSize": "32px", "fontWeight": "600"}}>
                   {String(v.n.pcf) + " "}
                   <span style={{"fontSize": "16px", "color": "var(--muted)"}}>
-                    {"of 86"}
+                    {v.supplierTotal ?? "of 86"}
                   </span>
                 </span>
                 <span style={{"fontSize": "13px", "color": "var(--muted)"}}>
@@ -305,6 +305,7 @@ export default class Inventory extends React.Component {
                 </span>
               </div>
             </div>
+            {v.supplierNote && <p style={{fontSize:12.5,color:'var(--muted)',margin:0}}>{v.supplierNote}</p>}
             <div style={{"display": "flex", "flexDirection": "column", "gap": "8px"}}>
               {(v.sbti || []).map((b, index0) => <React.Fragment key={index0}>
                 <div style={{"display": "grid", "gridTemplateColumns": "110px 1fr 36px", "gap": "10px", "alignItems": "center", "fontSize": "13px"}}>
@@ -322,7 +323,7 @@ export default class Inventory extends React.Component {
               </React.Fragment>)}
             </div>
             <button type={"button"} className={"ev"} onClick={v.trSup} style={{"alignSelf": "flex-start"}}>
-              {"suppliers.csv · SBTi status"}
+              {v.supplierSourceLabel || "suppliers.csv · SBTi status"}
             </button>
           </section>
         </div>

@@ -166,7 +166,7 @@ export default class Main extends React.Component {
     const asked = st.thread.filter((m) => m.role === 'user').map((m) => m.text);
     const suggest = Q.map((x) => ({ q: x.q, go: () => this.ask(x.q) })); const suggestRest = suggest.filter((x) => asked.indexOf(x.q) < 0); const lastAi = st.thread[st.thread.length - 1];
     const tr = st.trace || { title: '', value: '', unit: '', steps: [] };
-    const trMap = { approved: ['p-ok', 'Approved'], review: ['p-rev', 'In review'], draft: ['p-draft', 'Draft'], blocked: ['p-risk', 'Blocked'], changes: ['p-risk', 'Changes requested'] }; const trm = trMap[st.trStatus] || trMap.review;
+    const trMap = { approved: ['p-ok', 'Approved'], review: ['p-rev', 'In review'], draft: ['p-draft', 'Draft'], blocked: ['p-risk', 'Blocked'], changes: ['p-risk', 'Changes requested'], published_source_context: ['p-info', 'Published source'], source_context: ['p-info', 'Source context'], preliminary: ['p-draft', 'Preliminary'], unavailable: ['p-info', 'Unavailable'] }; const trm = trMap[st.trStatus] || trMap.review;
     const stCol = { Source: '#1B5E96', Factor: '#6B4A00', Calculation: '#0D6A3C', Check: '#A43A14' };
     const keys = ['ssp126', 'ssp245', 'ssp585'];
     return {
