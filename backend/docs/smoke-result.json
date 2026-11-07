@@ -1,0 +1,85 @@
+{
+  "started_at_utc": "2026-11-07T14:04:57.257631+00:00",
+  "status": "passed",
+  "paid_provider_calls": false,
+  "dataset": {
+    "id": "ds_4c38f4c7072e98741b5330fabe10b598cbdc41640c412c8308c9b6168176ea21",
+    "table_count": 41,
+    "document_count": 15,
+    "row_count": 474985
+  },
+  "evidence": {
+    "framework_digest_imported": true,
+    "framework_digest_retrievable": true,
+    "source_document_resolves": true,
+    "retrieval_method": "lexical"
+  },
+  "freight": {
+    "baseline_tco2e": 9437.3054477678,
+    "scenario_tco2e": 7867.6783648634,
+    "included_rows": 2339,
+    "excluded_rows": 0,
+    "status": "calculated"
+  },
+  "climate": {
+    "status": "calculated",
+    "matched_cells": 36,
+    "delta": {
+      "mean_temperature_c": 1.3413337097259852,
+      "seasonal_precipitation_mm": 5.855092592592598,
+      "seasonal_pet_mm": 18.875509259259275,
+      "seasonal_hot_days": 3.4175925925925923
+    }
+  },
+  "nature": {
+    "status": "context_only",
+    "catchments": 42
+  },
+  "decision": {
+    "id": "decision_b3bac19692a34613b6c5d8c12f5e1767",
+    "latest_status": "draft",
+    "prior_review_preserved": true,
+    "stale_update_rejected": true
+  },
+  "assistant": {
+    "generation_mode": "extractive_not_ai",
+    "citations": 5
+  },
+  "navigator": {
+    "screens": [
+      "overview",
+      "inventory",
+      "freight",
+      "pathways",
+      "climate",
+      "nature",
+      "review"
+    ],
+    "transition_scenarios": 7,
+    "catalogue_actions": 30,
+    "published_inventory_2024_tco2e": 244724.0,
+    "draft_2025": "blocked",
+    "quality_findings": 4,
+    "route_lookup": "explicit_great_circle_estimate",
+    "preset_trip_kgco2e": 22204.8,
+    "hvo_sensitivity_tco2e": 3139.2541658088,
+    "greedy_target_reached": true,
+    "climate_grid_cells": 84,
+    "climate_timeline_points": 108,
+    "historical_scenarios_identical": true,
+    "nature_contract_area_ha": 73756.53,
+    "nature_catchments": 42,
+    "source_years": {
+      "inventory": 2024,
+      "pathway_assumed_base": 2025,
+      "climate": 2040,
+      "nature_contract_parcels": 2025
+    },
+    "blocked_approval_rejected": true,
+    "trip_review_version": 2,
+    "conversation_messages": 2,
+    "assistant_generation_mode": "extractive_not_ai"
+  },
+  "server_stopped": true,
+  "finished_at_utc": "2026-11-07T14:05:10.984726+00:00"
+}
